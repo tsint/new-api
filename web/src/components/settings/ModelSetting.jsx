@@ -20,7 +20,16 @@ For commercial licensing, please contact support@quantumnous.com
 import React, { useEffect, useState } from 'react';
 import { Card, Spin, Tabs } from '@douyinfe/semi-ui';
 
-import { API, showError, showSuccess, toBoolean } from '../../helpers';
+import {
+  API,
+  compatibilityPolicyKeys,
+  defaultGlobalModelSettingInputs,
+  formatGlobalModelSettingOptionValue,
+  showError,
+  showSuccess,
+  thinkingModelBlacklistKey,
+  toBoolean,
+} from '../../helpers';
 import { useTranslation } from 'react-i18next';
 import SettingGeminiModel from '../../pages/Setting/Model/SettingGeminiModel';
 import SettingClaudeModel from '../../pages/Setting/Model/SettingClaudeModel';
@@ -39,11 +48,7 @@ const ModelSetting = () => {
     'claude.thinking_adapter_enabled': true,
     'claude.default_max_tokens': '',
     'claude.thinking_adapter_budget_tokens_percentage': 0.8,
-    'global.pass_through_request_enabled': false,
-    'global.thinking_model_blacklist': '[]',
-    'global.chat_completions_to_responses_policy': '{}',
-    'general_setting.ping_interval_enabled': false,
-    'general_setting.ping_interval_seconds': 60,
+    ...defaultGlobalModelSettingInputs,
     'gemini.thinking_adapter_enabled': false,
     'gemini.thinking_adapter_budget_tokens_percentage': 0.6,
     'grok.violation_deduction_enabled': true,
@@ -64,16 +69,24 @@ const ModelSetting = () => {
           item.key === 'claude.model_headers_settings' ||
           item.key === 'claude.default_max_tokens' ||
           item.key === 'gemini.supported_imagine_models' ||
-          item.key === 'global.thinking_model_blacklist' ||
-          item.key === 'global.chat_completions_to_responses_policy'
+          item.key === thinkingModelBlacklistKey ||
+          compatibilityPolicyKeys.includes(item.key)
         ) {
-          if (item.value !== '') {
-            try {
+          try {
+            if (
+              item.key === thinkingModelBlacklistKey ||
+              compatibilityPolicyKeys.includes(item.key)
+            ) {
+              item.value = formatGlobalModelSettingOptionValue(
+                item.key,
+                item.value,
+              );
+            } else if (item.value !== '') {
               item.value = JSON.stringify(JSON.parse(item.value), null, 2);
-            } catch (e) {
-              // Keep raw value so user can fix it, and avoid crashing the page.
-              console.error(`Invalid JSON for option ${item.key}:`, e);
             }
+          } catch (e) {
+            // Keep raw value so user can fix it, and avoid crashing the page.
+            console.error(`Invalid JSON for option ${item.key}:`, e);
           }
         }
         // Keep boolean config keys ending with enabled/Enabled so UI parses correctly.

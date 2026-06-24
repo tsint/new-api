@@ -53,8 +53,11 @@ export const getInitialTimestamp = () => {
   const now = new Date().getTime() / 1000;
 
   switch (defaultTime) {
+    case 'quarter':
     case 'hour':
       return timestamp2string(now - 86400);
+    case 'day':
+      return timestamp2string(now - 86400 * 7);
     case 'week':
       return timestamp2string(now - 86400 * 30);
     default:
@@ -85,12 +88,14 @@ export const updateChartSpec = (
   subtitle,
   newColors,
   dataId,
+  titleText,
 ) => {
   setterFunc((prev) => ({
     ...prev,
     data: [{ id: dataId, values: newData }],
     title: {
       ...prev.title,
+      text: titleText || prev.title.text,
       subtext: subtitle,
     },
     color: {
@@ -349,12 +354,14 @@ export const aggregateDataByTimeAndModel = (data, dataExportDefaultTime) => {
         model: modelKey,
         quota: 0,
         count: 0,
+        token_used: 0,
       });
     }
 
     const existing = aggregatedData.get(key);
     existing.quota += item.quota;
     existing.count += item.count;
+    existing.token_used += item.token_used || 0;
   });
 
   return aggregatedData;
@@ -389,22 +396,24 @@ export const generateChartTimePoints = (
 };
 
 // ========== 用户维度数据处理 ==========
-export const processUserData = (data, dataExportDefaultTime, limit = 10) => {
-  const userQuotaTotal = new Map();
+export const processUserData = (data, dataExportDefaultTime, limit = 10, metric = 'quota') => {
+  const valueKey = metric === 'token' ? 'token_used' : 'quota';
+
+  const userTotal = new Map();
   data.forEach((item) => {
-    const prev = userQuotaTotal.get(item.username) || 0;
-    userQuotaTotal.set(item.username, prev + item.quota);
+    const prev = userTotal.get(item.username) || 0;
+    userTotal.set(item.username, prev + (item[valueKey] || 0));
   });
 
-  const sorted = Array.from(userQuotaTotal.entries()).sort(
+  const sorted = Array.from(userTotal.entries()).sort(
     (a, b) => b[1] - a[1],
   );
   const topUsers = sorted.slice(0, limit).map(([u]) => u);
   const topUserSet = new Set(topUsers);
 
-  const rankingData = sorted.slice(0, limit).map(([username, quota]) => ({
+  const rankingData = sorted.slice(0, limit).map(([username, total]) => ({
     User: username,
-    Quota: quota,
+    Quota: total,
   }));
 
   const showYear = isDataCrossYear(data.map((item) => item.created_at));
@@ -423,7 +432,7 @@ export const processUserData = (data, dataExportDefaultTime, limit = 10) => {
     if (!user) return;
     const key = `${timeKey}-${user}`;
     const prev = timeUserMap.get(key) || { quota: 0 };
-    timeUserMap.set(key, { quota: prev.quota + item.quota });
+    timeUserMap.set(key, { quota: prev.quota + (item[valueKey] || 0) });
   });
 
   const sortedTimePoints = Array.from(allTimePoints).sort();

@@ -52,6 +52,8 @@ export const useDashboardData = (userState, userDispatch, statusState) => {
   const [dataExportDefaultTime, setDataExportDefaultTime] =
     useState(getDefaultTime());
 
+  const [userMetric, setUserMetric] = useState('token');
+
   // ========== 数据状态 ==========
   const [quotaData, setQuotaData] = useState([]);
   const [consumeQuota, setConsumeQuota] = useState(0);
@@ -84,6 +86,10 @@ export const useDashboardData = (userState, userDispatch, statusState) => {
   // ========== 常量 ==========
   const now = new Date();
   const isAdminUser = isAdmin();
+  const userRankingLimit = useMemo(() => {
+    const value = Number(statusState?.status?.data_export_user_ranking_limit);
+    return Number.isFinite(value) && value > 0 ? Math.floor(value) : 10;
+  }, [statusState?.status?.data_export_user_ranking_limit]);
 
   // ========== Panel enable flags ==========
   const apiInfoEnabled = statusState?.status?.api_info_enabled ?? true;
@@ -165,9 +171,9 @@ export const useDashboardData = (userState, userDispatch, statusState) => {
       let localEndTimestamp = Date.parse(end_timestamp) / 1000;
 
       if (isAdminUser) {
-        url = `/api/data/?username=${username}&start_timestamp=${localStartTimestamp}&end_timestamp=${localEndTimestamp}&default_time=${dataExportDefaultTime}`;
+        url = `/api/data/?username=${username}&start_timestamp=${localStartTimestamp}&end_timestamp=${localEndTimestamp}&granularity=${dataExportDefaultTime}`;
       } else {
-        url = `/api/data/self/?start_timestamp=${localStartTimestamp}&end_timestamp=${localEndTimestamp}&default_time=${dataExportDefaultTime}`;
+        url = `/api/data/self/?start_timestamp=${localStartTimestamp}&end_timestamp=${localEndTimestamp}&granularity=${dataExportDefaultTime}`;
       }
 
       const res = await API.get(url);
@@ -219,7 +225,7 @@ export const useDashboardData = (userState, userDispatch, statusState) => {
       const { start_timestamp, end_timestamp } = inputs;
       const localStartTimestamp = Date.parse(start_timestamp) / 1000;
       const localEndTimestamp = Date.parse(end_timestamp) / 1000;
-      const url = `/api/data/users?start_timestamp=${localStartTimestamp}&end_timestamp=${localEndTimestamp}`;
+      const url = `/api/data/users?start_timestamp=${localStartTimestamp}&end_timestamp=${localEndTimestamp}&metric=${userMetric}&granularity=${dataExportDefaultTime}`;
       const res = await API.get(url);
       const { success, message, data } = res.data;
       if (success) {
@@ -232,7 +238,7 @@ export const useDashboardData = (userState, userDispatch, statusState) => {
       console.error(err);
       return [];
     }
-  }, [inputs, isAdminUser]);
+  }, [inputs, isAdminUser, userMetric, dataExportDefaultTime]);
 
   const getUserData = useCallback(async () => {
     let res = await API.get(`/api/user/self`);
@@ -285,6 +291,8 @@ export const useDashboardData = (userState, userDispatch, statusState) => {
     // 输入状态
     inputs,
     dataExportDefaultTime,
+    userMetric,
+    setUserMetric,
 
     // 数据状态
     quotaData,
@@ -320,6 +328,7 @@ export const useDashboardData = (userState, userDispatch, statusState) => {
     performanceMetrics,
     getGreeting,
     isAdminUser,
+    userRankingLimit,
     hasApiInfoPanel,
     hasInfoPanels,
     apiInfoEnabled,

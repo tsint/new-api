@@ -30,6 +30,12 @@ type ModelRequest struct {
 func Distribute() func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var channel *model.Channel
+		formatGroup := common.FormatGroupOther
+		common.OptionMapRWMutex.RLock()
+		if enabled, ok := common.OptionMap["SmartFormatRoutingEnabled"]; ok && enabled == "true" {
+			formatGroup = deriveFormatGroupFromPath(c.Request.URL.Path)
+		}
+		common.OptionMapRWMutex.RUnlock()
 		channelId, ok := common.GetContextKey(c, constant.ContextKeyTokenSpecificChannelId)
 		modelRequest, shouldSelectChannel, err := getModelRequest(c)
 		if err != nil {
@@ -107,6 +113,8 @@ func Distribute() func(c *gin.Context) {
 								abortWithOpenAiMessage(c, http.StatusForbidden, i18n.T(c, i18n.MsgDistributorChannelDisabled))
 								return
 							}
+						} else if !common.ChannelTypeSupportsFormatGroup(preferred.Type, formatGroup) {
+							common.SysLog(fmt.Sprintf("channel affinity skipped channel #%d because type %d does not support format group %d", preferred.Id, preferred.Type, formatGroup))
 						} else if usingGroup == "auto" {
 							userGroup := common.GetContextKeyString(c, constant.ContextKeyUserGroup)
 							autoGroups := service.GetUserAutoGroup(userGroup)
@@ -129,10 +137,11 @@ func Distribute() func(c *gin.Context) {
 
 				if channel == nil {
 					channel, selectGroup, err = service.CacheGetRandomSatisfiedChannel(&service.RetryParam{
-						Ctx:        c,
-						ModelName:  modelRequest.Model,
-						TokenGroup: usingGroup,
-						Retry:      common.GetPointer(0),
+						Ctx:         c,
+						ModelName:   modelRequest.Model,
+						TokenGroup:  usingGroup,
+						Retry:       common.GetPointer(0),
+						FormatGroup: formatGroup,
 					})
 					if err != nil {
 						showGroup := usingGroup
@@ -432,4 +441,25 @@ func extractModelNameFromGeminiPath(path string) string {
 
 	// 返回模型名部分
 	return path[startIndex : startIndex+colonIndex]
+}
+
+func deriveFormatGroupFromPath(path string) common.APIFormatGroup {
+	switch {
+	case strings.HasPrefix(path, "/v1/messages"):
+		return common.FormatGroupClaude
+	case strings.HasPrefix(path, "/v1beta/models/"):
+		return common.FormatGroupGemini
+	case strings.HasPrefix(path, "/v1/chat/completions"),
+		strings.HasPrefix(path, "/v1/completions"),
+		strings.HasPrefix(path, "/v1/embeddings"),
+		strings.HasPrefix(path, "/v1/audio/"),
+		strings.HasPrefix(path, "/v1/images/"),
+		strings.HasPrefix(path, "/v1/responses"),
+		strings.HasPrefix(path, "/v1/realtime"),
+		strings.HasPrefix(path, "/v1/moderations"),
+		strings.HasPrefix(path, "/v1/rerank"):
+		return common.FormatGroupOpenAI
+	default:
+		return common.FormatGroupOther
+	}
 }

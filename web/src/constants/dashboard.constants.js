@@ -38,12 +38,14 @@ export const ILLUSTRATION_SIZE = { width: 96, height: 96 };
 
 // ========== 时间相关常量 ==========
 export const TIME_OPTIONS = [
+  { label: '15分钟', value: 'quarter' },
   { label: '小时', value: 'hour' },
   { label: '天', value: 'day' },
   { label: '周', value: 'week' },
 ];
 
 export const DEFAULT_TIME_INTERVALS = {
+  quarter: { seconds: 900, minutes: 15 },
   hour: { seconds: 3600, minutes: 60 },
   day: { seconds: 86400, minutes: 1440 },
   week: { seconds: 604800, minutes: 10080 },

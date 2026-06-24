@@ -39,6 +39,11 @@ import {
   showError,
   showSuccess,
   toBoolean,
+  buildSessionAuditSaveOptions,
+  defaultSessionAuditInputs,
+  isSessionAuditOptionKey,
+  parseSessionAuditOptionValue,
+  SESSION_AUDIT_KEYS,
 } from '../../helpers';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
@@ -110,6 +115,7 @@ const SystemSetting = () => {
     'fetch_setting.ip_list': [],
     'fetch_setting.allowed_ports': [],
     'fetch_setting.apply_ip_filter_for_domain': true,
+    ...defaultSessionAuditInputs,
   });
 
   const [originInputs, setOriginInputs] = useState({});
@@ -132,8 +138,13 @@ const SystemSetting = () => {
     const res = await API.get('/api/option/');
     const { success, message, data } = res.data;
     if (success) {
-      let newInputs = {};
+      let newInputs = { ...inputs };
       data.forEach((item) => {
+        if (isSessionAuditOptionKey(item.key)) {
+          item.value = parseSessionAuditOptionValue(item.key, item.value);
+          newInputs[item.key] = item.value;
+          return;
+        }
         switch (item.key) {
           case 'TopupGroupRatio':
             item.value = JSON.stringify(JSON.parse(item.value), null, 2);
@@ -400,6 +411,10 @@ const SystemSetting = () => {
     if (options.length > 0) {
       await updateOptions(options);
     }
+  };
+
+  const submitSessionAudit = async () => {
+    await updateOptions(buildSessionAuditSaveOptions(inputs));
   };
 
   const handleAddEmail = () => {
@@ -980,6 +995,218 @@ const SystemSetting = () => {
 
                   <Button onClick={submitSSRF} style={{ marginTop: 16 }}>
                     {t('更新SSRF防护设置')}
+                  </Button>
+                </Form.Section>
+              </Card>
+
+              <Card>
+                <Form.Section text={t('会话审计')}>
+                  <Banner
+                    type='warning'
+                    description={t(
+                      '会话审计会把命中的用户请求元数据和可选请求体写入服务器本地文件，请按合规要求控制采样率、过滤条件和文件目录权限。',
+                    )}
+                    style={{ marginBottom: 20, marginTop: 16 }}
+                  />
+                  <Row
+                    gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}
+                  >
+                    <Col xs={24} sm={24} md={24} lg={24} xl={24}>
+                      <Form.Checkbox field={SESSION_AUDIT_KEYS.enabled} noLabel>
+                        {t('启用会话审计')}
+                      </Form.Checkbox>
+                    </Col>
+                  </Row>
+                  <Row
+                    gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}
+                  >
+                    <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+                      <Form.InputNumber
+                        field={SESSION_AUDIT_KEYS.sampleRate}
+                        label={t('采样率')}
+                        min={0}
+                        max={1}
+                        step={0.01}
+                        precision={4}
+                        extraText={t('0 表示不采样，1 表示全部记录')}
+                      />
+                    </Col>
+                    <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+                      <Form.InputNumber
+                        field={SESSION_AUDIT_KEYS.retentionDays}
+                        label={t('保留天数')}
+                        min={0}
+                        step={1}
+                        extraText={t('0 表示不按时间清理')}
+                      />
+                    </Col>
+                    <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+                      <Form.InputNumber
+                        field={SESSION_AUDIT_KEYS.maxBytesPerUser}
+                        label={t('单用户最大日志字节数')}
+                        min={0}
+                        step={1024}
+                        extraText={t('默认 10485760，即 10MiB；0 表示不限制')}
+                      />
+                    </Col>
+                  </Row>
+                  <Row
+                    gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}
+                  >
+                    <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+                      <Form.Input
+                        field={SESSION_AUDIT_KEYS.outputDir}
+                        label={t('日志目录')}
+                        placeholder='/app/audit_logs'
+                        extraText={t('服务器本地路径，默认 /app/audit_logs')}
+                      />
+                    </Col>
+                    <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+                      <Form.InputNumber
+                        field={SESSION_AUDIT_KEYS.maxRequestBodyBytes}
+                        label={t('请求体最大记录字节数')}
+                        min={0}
+                        step={1024}
+                        extraText={t('超过该值会截断；0 表示不记录请求体内容')}
+                      />
+                    </Col>
+                  </Row>
+                  <Row
+                    gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}
+                  >
+                    <Col xs={24} sm={24} md={8} lg={8} xl={8}>
+                      <Form.Checkbox
+                        field={SESSION_AUDIT_KEYS.captureRequestBody}
+                        noLabel
+                      >
+                        {t('记录请求体')}
+                      </Form.Checkbox>
+                    </Col>
+                    <Col xs={24} sm={24} md={8} lg={8} xl={8}>
+                      <Form.Checkbox
+                        field={SESSION_AUDIT_KEYS.captureRequestHeaders}
+                        noLabel
+                      >
+                        {t('记录请求头')}
+                      </Form.Checkbox>
+                    </Col>
+                    <Col xs={24} sm={24} md={8} lg={8} xl={8}>
+                      <Form.Checkbox
+                        field={SESSION_AUDIT_KEYS.redactSensitiveHeaders}
+                        noLabel
+                      >
+                        {t('脱敏敏感请求头')}
+                      </Form.Checkbox>
+                    </Col>
+                  </Row>
+                  <Row
+                    gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}
+                    style={{ marginTop: 12 }}
+                  >
+                    <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+                      <Text strong>{t('包含用户 ID')}</Text>
+                      <TagInput
+                        value={inputs[SESSION_AUDIT_KEYS.includeUserIds] || []}
+                        onChange={(value) =>
+                          setInputs((prev) => ({
+                            ...prev,
+                            [SESSION_AUDIT_KEYS.includeUserIds]: value,
+                          }))
+                        }
+                        placeholder={t('输入用户 ID 后回车，留空表示不限')}
+                        style={{ width: '100%', marginTop: 8 }}
+                      />
+                    </Col>
+                    <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+                      <Text strong>{t('排除用户 ID')}</Text>
+                      <TagInput
+                        value={inputs[SESSION_AUDIT_KEYS.excludeUserIds] || []}
+                        onChange={(value) =>
+                          setInputs((prev) => ({
+                            ...prev,
+                            [SESSION_AUDIT_KEYS.excludeUserIds]: value,
+                          }))
+                        }
+                        placeholder={t('输入用户 ID 后回车')}
+                        style={{ width: '100%', marginTop: 8 }}
+                      />
+                    </Col>
+                  </Row>
+                  <Row
+                    gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}
+                    style={{ marginTop: 12 }}
+                  >
+                    <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+                      <Text strong>{t('包含 Token ID')}</Text>
+                      <TagInput
+                        value={inputs[SESSION_AUDIT_KEYS.includeTokenIds] || []}
+                        onChange={(value) =>
+                          setInputs((prev) => ({
+                            ...prev,
+                            [SESSION_AUDIT_KEYS.includeTokenIds]: value,
+                          }))
+                        }
+                        placeholder={t('输入 Token ID 后回车，留空表示不限')}
+                        style={{ width: '100%', marginTop: 8 }}
+                      />
+                    </Col>
+                    <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+                      <Text strong>{t('排除 Token ID')}</Text>
+                      <TagInput
+                        value={inputs[SESSION_AUDIT_KEYS.excludeTokenIds] || []}
+                        onChange={(value) =>
+                          setInputs((prev) => ({
+                            ...prev,
+                            [SESSION_AUDIT_KEYS.excludeTokenIds]: value,
+                          }))
+                        }
+                        placeholder={t('输入 Token ID 后回车')}
+                        style={{ width: '100%', marginTop: 8 }}
+                      />
+                    </Col>
+                  </Row>
+                  <Row
+                    gutter={{ xs: 8, sm: 16, md: 24, lg: 24, xl: 24, xxl: 24 }}
+                    style={{ marginTop: 12 }}
+                  >
+                    <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+                      <Text strong>{t('包含模型匹配')}</Text>
+                      <TagInput
+                        value={
+                          inputs[SESSION_AUDIT_KEYS.includeModelPatterns] || []
+                        }
+                        onChange={(value) =>
+                          setInputs((prev) => ({
+                            ...prev,
+                            [SESSION_AUDIT_KEYS.includeModelPatterns]: value,
+                          }))
+                        }
+                        placeholder={t('支持 * 通配符，如 gpt-*')}
+                        style={{ width: '100%', marginTop: 8 }}
+                      />
+                    </Col>
+                    <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+                      <Text strong>{t('排除模型匹配')}</Text>
+                      <TagInput
+                        value={
+                          inputs[SESSION_AUDIT_KEYS.excludeModelPatterns] || []
+                        }
+                        onChange={(value) =>
+                          setInputs((prev) => ({
+                            ...prev,
+                            [SESSION_AUDIT_KEYS.excludeModelPatterns]: value,
+                          }))
+                        }
+                        placeholder={t('支持 * 通配符，如 embedding-*')}
+                        style={{ width: '100%', marginTop: 8 }}
+                      />
+                    </Col>
+                  </Row>
+                  <Button
+                    onClick={submitSessionAudit}
+                    style={{ marginTop: 16 }}
+                  >
+                    {t('保存会话审计设置')}
                   </Button>
                 </Form.Section>
               </Card>

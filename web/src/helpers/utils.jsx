@@ -236,9 +236,15 @@ export function timestamp2string1(
   if (hour.length === 1) {
     hour = '0' + hour;
   }
+  let minute = date.getMinutes().toString();
+  if (minute.length === 1) {
+    minute = '0' + minute;
+  }
   // 仅在跨年时显示年份
   let str = showYear ? year + '-' + month + '-' + day : month + '-' + day;
-  if (dataExportDefaultTime === 'hour') {
+  if (dataExportDefaultTime === 'quarter') {
+    str += ' ' + hour + ':' + minute;
+  } else if (dataExportDefaultTime === 'hour') {
     str += ' ' + hour + ':00';
   } else if (dataExportDefaultTime === 'week') {
     let nextWeek = new Date(timestamp * 1000 + 6 * 24 * 60 * 60 * 1000);

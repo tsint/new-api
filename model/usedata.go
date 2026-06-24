@@ -56,8 +56,8 @@ func logQuotaDataCache(userId int, username string, modelName string, quota int,
 }
 
 func LogQuotaData(userId int, username string, modelName string, quota int, createdAt int64, tokenUsed int) {
-	// 只精确到小时
-	createdAt = createdAt - (createdAt % 3600)
+	// 只精确到15分钟
+	createdAt = createdAt - (createdAt % 900)
 
 	CacheQuotaDataLock.Lock()
 	defer CacheQuotaDataLock.Unlock()
@@ -101,38 +101,76 @@ func increaseQuotaData(userId int, username string, modelName string, count int,
 	}
 }
 
-func GetQuotaDataByUsername(username string, startTime int64, endTime int64) (quotaData []*QuotaData, err error) {
-	var quotaDatas []*QuotaData
-	// 从quota_data表中查询数据
-	err = DB.Table("quota_data").Where("username = ? and created_at >= ? and created_at <= ?", username, startTime, endTime).Find(&quotaDatas).Error
-	return quotaDatas, err
+// buildTimeBucketExpr returns a SQL expression that truncates created_at to the given granularity.
+// Supports PostgreSQL, MySQL, and SQLite.
+func buildTimeBucketExpr(granularity string) string {
+	var interval int64
+	switch granularity {
+	case "quarter":
+		interval = 900
+	case "hour":
+		interval = 3600
+	case "day":
+		interval = 86400
+	case "week":
+		interval = 604800
+	default:
+		interval = 900
+	}
+
+	switch {
+	case common.UsingPostgreSQL:
+		return fmt.Sprintf("(created_at / %d) * %d", interval, interval)
+	case common.UsingSQLite:
+		return fmt.Sprintf("(created_at / %d) * %d", interval, interval)
+	default: // MySQL
+		return fmt.Sprintf("(created_at - created_at %% %d)", interval)
+	}
 }
 
-func GetQuotaDataByUserId(userId int, startTime int64, endTime int64) (quotaData []*QuotaData, err error) {
+func GetQuotaDataByUsername(username string, startTime int64, endTime int64, granularity string) (quotaData []*QuotaData, err error) {
 	var quotaDatas []*QuotaData
-	// 从quota_data表中查询数据
-	err = DB.Table("quota_data").Where("user_id = ? and created_at >= ? and created_at <= ?", userId, startTime, endTime).Find(&quotaDatas).Error
-	return quotaDatas, err
-}
-
-func GetQuotaDataGroupByUser(startTime int64, endTime int64) (quotaData []*QuotaData, err error) {
-	var quotaDatas []*QuotaData
+	timeBucket := buildTimeBucketExpr(granularity)
 	err = DB.Table("quota_data").
-		Select("username, created_at, sum(count) as count, sum(quota) as quota, sum(token_used) as token_used").
-		Where("created_at >= ? and created_at <= ?", startTime, endTime).
-		Group("username, created_at").
+		Select("username, model_name, "+timeBucket+" as created_at, sum(count) as count, sum(quota) as quota, sum(token_used) as token_used").
+		Where("username = ? and created_at >= ? and created_at <= ?", username, startTime, endTime).
+		Group("username, model_name, " + timeBucket).
 		Find(&quotaDatas).Error
 	return quotaDatas, err
 }
 
-func GetAllQuotaDates(startTime int64, endTime int64, username string) (quotaData []*QuotaData, err error) {
+func GetQuotaDataByUserId(userId int, startTime int64, endTime int64, granularity string) (quotaData []*QuotaData, err error) {
+	var quotaDatas []*QuotaData
+	timeBucket := buildTimeBucketExpr(granularity)
+	err = DB.Table("quota_data").
+		Select("user_id, model_name, "+timeBucket+" as created_at, sum(count) as count, sum(quota) as quota, sum(token_used) as token_used").
+		Where("user_id = ? and created_at >= ? and created_at <= ?", userId, startTime, endTime).
+		Group("user_id, model_name, " + timeBucket).
+		Find(&quotaDatas).Error
+	return quotaDatas, err
+}
+
+func GetQuotaDataGroupByUser(startTime int64, endTime int64, granularity string) (quotaData []*QuotaData, err error) {
+	var quotaDatas []*QuotaData
+	timeBucket := buildTimeBucketExpr(granularity)
+	err = DB.Table("quota_data").
+		Select("username, "+timeBucket+" as created_at, sum(count) as count, sum(quota) as quota, sum(token_used) as token_used").
+		Where("created_at >= ? and created_at <= ?", startTime, endTime).
+		Group("username, " + timeBucket).
+		Find(&quotaDatas).Error
+	return quotaDatas, err
+}
+
+func GetAllQuotaDates(startTime int64, endTime int64, username string, granularity string) (quotaData []*QuotaData, err error) {
 	if username != "" {
-		return GetQuotaDataByUsername(username, startTime, endTime)
+		return GetQuotaDataByUsername(username, startTime, endTime, granularity)
 	}
 	var quotaDatas []*QuotaData
-	// 从quota_data表中查询数据
-	// only select model_name, sum(count) as count, sum(quota) as quota, model_name, created_at from quota_data group by model_name, created_at;
-	//err = DB.Table("quota_data").Where("created_at >= ? and created_at <= ?", startTime, endTime).Find(&quotaDatas).Error
-	err = DB.Table("quota_data").Select("model_name, sum(count) as count, sum(quota) as quota, sum(token_used) as token_used, created_at").Where("created_at >= ? and created_at <= ?", startTime, endTime).Group("model_name, created_at").Find(&quotaDatas).Error
+	timeBucket := buildTimeBucketExpr(granularity)
+	err = DB.Table("quota_data").
+		Select("model_name, sum(count) as count, sum(quota) as quota, sum(token_used) as token_used, "+timeBucket+" as created_at").
+		Where("created_at >= ? and created_at <= ?", startTime, endTime).
+		Group("model_name, " + timeBucket).
+		Find(&quotaDatas).Error
 	return quotaDatas, err
 }

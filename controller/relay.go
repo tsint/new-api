@@ -207,6 +207,9 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 			break
 		}
 		c.Request.Body = io.NopCloser(bodyStorage)
+		if auditBytes, auditErr := bodyStorage.Bytes(); auditErr == nil {
+			relay.AuditRelayRequest(c, relayInfo, auditBytes)
+		}
 
 		switch relayFormat {
 		case types.RelayFormatOpenAIRealtime:

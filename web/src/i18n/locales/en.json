@@ -2830,6 +2830,8 @@
     "自定义错误响应": "Custom Error Response",
     "自定义镜像": "Custom Image",
     "自用模式": "Self-use mode",
+    "智能API格式路由": "Smart API Format Routing",
+    "优先将请求分发到格式匹配的渠道": "Prefer channels matching request format",
     "自适应列表": "Adaptive list",
     "至": "until",
     "节省": "Save",

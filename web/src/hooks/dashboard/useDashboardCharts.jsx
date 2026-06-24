@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { initVChartSemiTheme } from '@visactor/vchart-semi-theme';
 import {
   modelColorMap,
@@ -25,6 +25,10 @@ import {
   renderQuota,
   modelToColor,
   getQuotaWithUnit,
+  buildUserRankAxisMax,
+  buildUserRankChartPadding,
+  userRankLabelOptions,
+  userRankLabelStyle,
 } from '../../helpers';
 import {
   processRawData,
@@ -36,14 +40,25 @@ import {
   initializeMaps,
   processUserData,
 } from '../../helpers/dashboard';
+import { handleLegendToggle } from '../../helpers/legend-toggle';
 
 const USER_COLORS = [
-  '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
-  '#ec4899', '#06b6d4', '#f97316', '#6366f1', '#14b8a6',
+  '#3b82f6',
+  '#ef4444',
+  '#10b981',
+  '#f59e0b',
+  '#8b5cf6',
+  '#ec4899',
+  '#06b6d4',
+  '#f97316',
+  '#6366f1',
+  '#14b8a6',
 ];
 
 export const useDashboardCharts = (
   dataExportDefaultTime,
+  userMetric,
+  userRankingLimit,
   setTrendData,
   setConsumeQuota,
   setTimes,
@@ -53,6 +68,12 @@ export const useDashboardCharts = (
   setModelColors,
   t,
 ) => {
+  // ========== userMetric ref to avoid closure trap ==========
+  const userMetricRef = useRef(userMetric);
+  useEffect(() => {
+    userMetricRef.current = userMetric;
+  }, [userMetric]);
+
   // ========== 图表规格状态 ==========
   const [spec_pie, setSpecPie] = useState({
     type: 'pie',
@@ -112,17 +133,28 @@ export const useDashboardCharts = (
   });
 
   const [spec_line, setSpecLine] = useState({
-    type: 'bar',
+    type: 'common',
     data: [
+      { id: 'barData', values: [] },
+      { id: 'totalData', values: [] },
+    ],
+    series: [
       {
-        id: 'barData',
-        values: [],
+        type: 'bar',
+        dataId: 'barData',
+        xField: 'Time',
+        yField: 'Usage',
+        seriesField: 'Model',
+        stack: true,
+      },
+      {
+        type: 'line',
+        dataId: 'totalData',
+        xField: 'Time',
+        yField: 'Total',
+        seriesField: 'Model',
       },
     ],
-    xField: 'Time',
-    yField: 'Usage',
-    seriesField: 'Model',
-    stack: true,
     legends: {
       visible: true,
       selectMode: 'single',
@@ -132,54 +164,12 @@ export const useDashboardCharts = (
       text: t('模型消耗分布'),
       subtext: `${t('总计')}：${renderQuota(0, 2)}`,
     },
-    bar: {
-      state: {
-        hover: {
-          stroke: '#000',
-          lineWidth: 1,
-        },
-      },
-    },
-    tooltip: {
-      mark: {
-        content: [
-          {
-            key: (datum) => datum['Model'],
-            value: (datum) => renderQuota(datum['rawQuota'] || 0, 4),
-          },
-        ],
-      },
-      dimension: {
-        content: [
-          {
-            key: (datum) => datum['Model'],
-            value: (datum) => datum['rawQuota'] || 0,
-          },
-        ],
-        updateContent: (array) => {
-          array.sort((a, b) => b.value - a.value);
-          let sum = 0;
-          for (let i = 0; i < array.length; i++) {
-            if (array[i].key == '其他') {
-              continue;
-            }
-            let value = parseFloat(array[i].value);
-            if (isNaN(value)) {
-              value = 0;
-            }
-            if (array[i].datum && array[i].datum.TimeSum) {
-              sum = array[i].datum.TimeSum;
-            }
-            array[i].value = renderQuota(value, 4);
-          }
-          array.unshift({
-            key: t('总计'),
-            value: renderQuota(sum, 4),
-          });
-          return array;
-        },
-      },
-    },
+    axes: [
+      { orient: 'bottom', type: 'band' },
+      { orient: 'left', type: 'linear' },
+      { orient: 'right', type: 'linear' },
+    ],
+    tooltip: { visible: true },
     color: {
       specified: modelColorMap,
     },
@@ -290,6 +280,7 @@ export const useDashboardCharts = (
   const [spec_user_rank, setSpecUserRank] = useState({
     type: 'bar',
     data: [{ id: 'userRankData', values: [] }],
+    padding: buildUserRankChartPadding(),
     xField: 'rawQuota',
     yField: 'User',
     seriesField: 'User',
@@ -306,23 +297,30 @@ export const useDashboardCharts = (
     label: {
       visible: true,
       position: 'outside',
+      ...userRankLabelOptions,
       formatMethod: (value, datum) => renderQuota(datum['rawQuota'] || 0, 2),
+      style: userRankLabelStyle,
     },
-    axes: [{
-      orient: 'left',
-      type: 'band',
-      label: { visible: true },
-    }, {
-      orient: 'bottom',
-      type: 'linear',
-      visible: false,
-    }],
+    axes: [
+      {
+        orient: 'left',
+        type: 'band',
+        label: { visible: true },
+      },
+      {
+        orient: 'bottom',
+        type: 'linear',
+        visible: false,
+      },
+    ],
     tooltip: {
       mark: {
-        content: [{
-          key: (datum) => datum['User'],
-          value: (datum) => renderQuota(datum['rawQuota'] || 0, 4),
-        }],
+        content: [
+          {
+            key: (datum) => datum['User'],
+            value: (datum) => renderQuota(datum['rawQuota'] || 0, 4),
+          },
+        ],
       },
     },
     color: { type: 'ordinal', range: USER_COLORS },
@@ -342,27 +340,33 @@ export const useDashboardCharts = (
       text: t('用户消耗趋势'),
       subtext: '',
     },
-    axes: [{
-      orient: 'left',
-      label: {
-        formatMethod: (value) => renderQuota(value, 2),
+    axes: [
+      {
+        orient: 'left',
+        label: {
+          formatMethod: (value) => renderQuota(value, 2),
+        },
       },
-    }],
+    ],
     area: { style: { fillOpacity: 0.15 } },
     line: { style: { lineWidth: 2 } },
     point: { visible: false },
     tooltip: {
       mark: {
-        content: [{
-          key: (datum) => datum['User'],
-          value: (datum) => renderQuota(datum['rawQuota'] || 0, 4),
-        }],
+        content: [
+          {
+            key: (datum) => datum['User'],
+            value: (datum) => renderQuota(datum['rawQuota'] || 0, 4),
+          },
+        ],
       },
       dimension: {
-        content: [{
-          key: (datum) => datum['User'],
-          value: (datum) => datum['rawQuota'] || 0,
-        }],
+        content: [
+          {
+            key: (datum) => datum['User'],
+            value: (datum) => datum['rawQuota'] || 0,
+          },
+        ],
         updateContent: (array) => {
           array.sort((a, b) => b.value - a.value);
           let sum = 0;
@@ -382,6 +386,15 @@ export const useDashboardCharts = (
     },
     color: { type: 'ordinal', range: USER_COLORS },
   });
+
+  // ========== 用户趋势图 Legend 交互状态 ==========
+  const [lastSelectedLegend, setLastSelectedLegend] = useState(null);
+  const lastSelectedLegendRef = useRef(null);
+  const userTrendAllUsers = useRef([]);
+  const userTrendChartRef = useRef(null);
+  const lastSelectedMainLegendRef = useRef(null);
+  const mainLegendItems = useRef([]);
+  const mainChartRef = useRef(null);
 
   // ========== 数据处理函数 ==========
   const generateModelColors = useCallback((uniqueModels, modelColors) => {
@@ -415,6 +428,11 @@ export const useDashboardCharts = (
         timeCountMap,
       } = processedData;
 
+      const isTokenMetric = userMetricRef.current === 'token';
+      const valueKey = isTokenMetric ? 'token_used' : 'quota';
+      const renderValue = (val) =>
+        isTokenMetric ? renderNumber(val) : renderQuota(val, 4);
+
       const trendDataResult = calculateTrendData(
         timePoints,
         timeQuotaMap,
@@ -425,7 +443,10 @@ export const useDashboardCharts = (
       setTrendData(trendDataResult);
 
       const newModelColors = generateModelColors(uniqueModels, {});
+      newModelColors.total = '#f59e0b';
       setModelColors(newModelColors);
+      mainLegendItems.current = [...Array.from(uniqueModels), 'total'];
+      lastSelectedMainLegendRef.current = null;
 
       const aggregatedData = aggregateDataByTimeAndModel(
         data,
@@ -456,13 +477,12 @@ export const useDashboardCharts = (
         let timeData = Array.from(uniqueModels).map((model) => {
           const key = `${time}-${model}`;
           const aggregated = aggregatedData.get(key);
+          const rawValue = aggregated?.[valueKey] || 0;
           return {
             Time: time,
             Model: model,
-            rawQuota: aggregated?.quota || 0,
-            Usage: aggregated?.quota
-              ? getQuotaWithUnit(aggregated.quota, 4)
-              : 0,
+            rawQuota: rawValue,
+            Usage: isTokenMetric ? rawValue : getQuotaWithUnit(rawValue, 4),
           };
         });
 
@@ -474,6 +494,27 @@ export const useDashboardCharts = (
 
       newLineData.sort((a, b) => a.Time.localeCompare(b.Time));
 
+      // 计算总额折线数据
+      const timeTotalMap = new Map();
+      chartTimePoints.forEach((time) => {
+        let timeSum = 0;
+        Array.from(uniqueModels).forEach((model) => {
+          const key = `${time}-${model}`;
+          const aggregated = aggregatedData.get(key);
+          timeSum += aggregated?.[valueKey] || 0;
+        });
+        timeTotalMap.set(time, timeSum);
+      });
+
+      const totalLineData = chartTimePoints.map((time) => ({
+        Time: time,
+        Model: 'total',
+        Total: isTokenMetric
+          ? timeTotalMap.get(time)
+          : getQuotaWithUnit(timeTotalMap.get(time), 4),
+        TotalRaw: timeTotalMap.get(time),
+      }));
+
       updateChartSpec(
         setSpecPie,
         newPieData,
@@ -482,13 +523,109 @@ export const useDashboardCharts = (
         'id0',
       );
 
-      updateChartSpec(
-        setSpecLine,
-        newLineData,
-        `${t('总计')}：${renderQuota(totalQuota, 2)}`,
-        newModelColors,
-        'barData',
-      );
+      setSpecLine({
+        type: 'common',
+        data: [
+          { id: 'barData', values: newLineData },
+          { id: 'totalData', values: totalLineData },
+        ],
+        series: [
+          {
+            type: 'bar',
+            dataId: 'barData',
+            xField: 'Time',
+            yField: 'Usage',
+            seriesField: 'Model',
+            stack: true,
+            bar: {
+              state: {
+                hover: {
+                  stroke: '#000',
+                  lineWidth: 1,
+                },
+              },
+            },
+          },
+          {
+            type: 'line',
+            dataId: 'totalData',
+            xField: 'Time',
+            yField: 'Total',
+            seriesField: 'Model',
+            point: { visible: false },
+            line: {
+              style: {
+                lineWidth: 2,
+                stroke: '#f59e0b',
+              },
+            },
+          },
+        ],
+        legends: {
+          visible: true,
+          selectMode: 'single',
+        },
+        title: {
+          visible: true,
+          text: isTokenMetric ? t('模型 Token 消耗分布') : t('模型消耗分布'),
+          subtext: `${t('总计')}：${isTokenMetric ? renderNumber(totalTokens) : renderQuota(totalQuota, 2)}`,
+        },
+        axes: [
+          { orient: 'bottom', type: 'band' },
+          { orient: 'left', type: 'linear' },
+          {
+            orient: 'right',
+            type: 'linear',
+            label: { formatMethod: (value) => renderValue(value) },
+          },
+        ],
+        tooltip: {
+          mark: {
+            content: [
+              {
+                key: (datum) => datum['Model'] || t('总额'),
+                value: (datum) => {
+                  if (datum['TotalRaw'] !== undefined) {
+                    return renderValue(datum['TotalRaw']);
+                  }
+                  return renderValue(datum['rawQuota'] || 0);
+                },
+              },
+            ],
+          },
+          dimension: {
+            content: [
+              {
+                key: (datum) => datum['Model'] || t('总额'),
+                value: (datum) => datum['rawQuota'] || datum['TotalRaw'] || 0,
+              },
+            ],
+            updateContent: (array) => {
+              array.sort((a, b) => b.value - a.value);
+              let sum = 0;
+              const result = [];
+              array.forEach((item) => {
+                if (item.key == '其他') return;
+                let value = parseFloat(item.value);
+                if (isNaN(value)) value = 0;
+                sum += value;
+                result.push({
+                  key: item.key,
+                  value: renderValue(value),
+                });
+              });
+              result.unshift({
+                key: t('总计'),
+                value: renderValue(sum),
+              });
+              return result;
+            },
+          },
+        },
+        color: {
+          specified: newModelColors,
+        },
+      });
 
       // ===== 模型调用次数折线图 =====
       let modelLineData = [];
@@ -550,6 +687,7 @@ export const useDashboardCharts = (
     },
     [
       dataExportDefaultTime,
+      userMetric,
       setTrendData,
       generateModelColors,
       setModelColors,
@@ -564,27 +702,74 @@ export const useDashboardCharts = (
 
   // ========== 用户维度图表数据处理 ==========
   const updateUserChartData = useCallback(
-    (data) => {
-      const { rankingData, trendData: userTrend } = processUserData(
-        data,
-        dataExportDefaultTime,
-        10,
-      );
+    (data, metric = 'quota') => {
+      const isToken = metric === 'token';
+      const limit = Number.isFinite(Number(userRankingLimit))
+        ? Math.max(1, Math.floor(Number(userRankingLimit)))
+        : 10;
+      const {
+        rankingData,
+        trendData: userTrend,
+        topUsers,
+      } = processUserData(data, dataExportDefaultTime, limit, metric);
+      userTrendAllUsers.current = topUsers || [];
+      setLastSelectedLegend(null);
+      lastSelectedLegendRef.current = null;
 
-      const userRankValues = rankingData.map((item) => ({
-        User: item.User,
-        rawQuota: item.Quota,
-        Quota: getQuotaWithUnit(item.Quota, 4),
-      })).sort((a, b) => b.rawQuota - a.rawQuota);
+      const userRankValues = rankingData
+        .map((item) => ({
+          User: item.User,
+          rawQuota: item.Quota,
+          Quota: isToken
+            ? renderNumber(item.Quota)
+            : getQuotaWithUnit(item.Quota, 4),
+        }))
+        .sort((a, b) => b.rawQuota - a.rawQuota);
 
-      const totalUserQuota = rankingData.reduce((s, i) => s + i.Quota, 0);
+      const totalUserValue = rankingData.reduce((s, i) => s + i.Quota, 0);
+      const userRankAxisMax = buildUserRankAxisMax(userRankValues);
 
       setSpecUserRank((prev) => ({
         ...prev,
         data: [{ id: 'userRankData', values: userRankValues }],
         title: {
           ...prev.title,
-          subtext: `${t('总计')}：${renderQuota(totalUserQuota, 2)}`,
+          text: isToken ? t('用户Token消耗排行') : t('用户消耗排行'),
+          subtext: `${t('总计')}：${isToken ? renderNumber(totalUserValue) : renderQuota(totalUserValue, 2)}`,
+        },
+        label: {
+          ...prev.label,
+          formatMethod: (value, datum) =>
+            isToken
+              ? renderNumber(datum['rawQuota'] || 0)
+              : renderQuota(datum['rawQuota'] || 0, 2),
+        },
+        axes: [
+          {
+            orient: 'left',
+            type: 'band',
+            label: { visible: true },
+          },
+          {
+            orient: 'bottom',
+            type: 'linear',
+            visible: false,
+            max: userRankAxisMax,
+          },
+        ],
+        tooltip: {
+          ...prev.tooltip,
+          mark: {
+            content: [
+              {
+                key: (datum) => datum['User'],
+                value: (datum) =>
+                  isToken
+                    ? renderNumber(datum['rawQuota'] || 0)
+                    : renderQuota(datum['rawQuota'] || 0, 4),
+              },
+            ],
+          },
         },
       }));
 
@@ -592,7 +777,9 @@ export const useDashboardCharts = (
         Time: item.Time,
         User: item.User,
         rawQuota: item.Quota,
-        Usage: item.Quota ? getQuotaWithUnit(item.Quota, 4) : 0,
+        Usage: isToken
+          ? renderNumber(item.Quota)
+          : getQuotaWithUnit(item.Quota, 4),
       }));
 
       setSpecUserTrend((prev) => ({
@@ -600,12 +787,112 @@ export const useDashboardCharts = (
         data: [{ id: 'userTrendData', values: userTrendValues }],
         title: {
           ...prev.title,
-          subtext: `${t('总计')}：${renderQuota(totalUserQuota, 2)}`,
+          text: isToken ? t('用户Token消耗趋势') : t('用户消耗趋势'),
+          subtext: `${t('总计')}：${isToken ? renderNumber(totalUserValue) : renderQuota(totalUserValue, 2)}`,
+        },
+        axes: [
+          {
+            orient: 'left',
+            label: {
+              formatMethod: (value) =>
+                isToken ? renderNumber(value) : renderQuota(value, 2),
+            },
+          },
+        ],
+        tooltip: {
+          ...prev.tooltip,
+          mark: {
+            content: [
+              {
+                key: (datum) => datum['User'],
+                value: (datum) =>
+                  isToken
+                    ? renderNumber(datum['rawQuota'] || 0)
+                    : renderQuota(datum['rawQuota'] || 0, 4),
+              },
+            ],
+          },
+          dimension: {
+            content: [
+              {
+                key: (datum) => datum['User'],
+                value: (datum) => datum['rawQuota'] || 0,
+              },
+            ],
+            updateContent: (array) => {
+              array.sort((a, b) => b.value - a.value);
+              let sum = 0;
+              for (let i = 0; i < array.length; i++) {
+                let value = parseFloat(array[i].value);
+                if (isNaN(value)) value = 0;
+                sum += value;
+                array[i].value = isToken
+                  ? renderNumber(value)
+                  : renderQuota(value, 4);
+              }
+              array.unshift({
+                key: t('总计'),
+                value: isToken ? renderNumber(sum) : renderQuota(sum, 4),
+              });
+              return array;
+            },
+          },
         },
       }));
     },
-    [dataExportDefaultTime, t],
+    [dataExportDefaultTime, userRankingLimit, t, setLastSelectedLegend],
   );
+
+  const handleMainLegendClick = useCallback((e) => {
+    const chart = mainChartRef.current;
+    if (!chart) return;
+
+    const clickedItem = e?.value?.[0];
+    if (!clickedItem) return;
+
+    const { action, selectedUsers, newLastSelected } = handleLegendToggle(
+      lastSelectedMainLegendRef.current,
+      clickedItem,
+      mainLegendItems.current,
+    );
+
+    if (action === 'restore') {
+      setTimeout(() => {
+        chart.setLegendSelectedDataByIndex(0, selectedUsers);
+      }, 0);
+    }
+
+    lastSelectedMainLegendRef.current = newLastSelected;
+  }, []);
+
+  // ========== 用户趋势图 Legend 点击处理 ==========
+  // 注意：使用 ref 读取最新状态，避免 React VChart 事件绑定闭包陷阱
+  // 使用 setTimeout(..., 0) 将恢复操作延迟到下一个事件循环，
+  // 避免与 VChart 内部的 setSelectedData 处理发生时序竞争
+  const handleUserTrendLegendClick = useCallback((e) => {
+    const chart = userTrendChartRef.current;
+    if (!chart) return;
+
+    const clickedUser = e?.value?.[0];
+    if (!clickedUser) return;
+
+    const allUsers = userTrendAllUsers.current;
+    const { action, selectedUsers, newLastSelected } = handleLegendToggle(
+      lastSelectedLegendRef.current,
+      clickedUser,
+      allUsers,
+    );
+
+    if (action === 'restore') {
+      // 延迟到下一个事件循环，让 VChart 先完成内部处理
+      setTimeout(() => {
+        chart.setLegendSelectedDataByIndex(0, selectedUsers);
+      }, 0);
+    }
+    // 'select' 时 VChart single 模式已自动处理，只需更新追踪状态
+    setLastSelectedLegend(newLastSelected);
+    lastSelectedLegendRef.current = newLastSelected;
+  }, []);
 
   // ========== 初始化图表主题 ==========
   useEffect(() => {
@@ -624,5 +911,9 @@ export const useDashboardCharts = (
     updateChartData,
     updateUserChartData,
     generateModelColors,
+    mainChartRef,
+    handleMainLegendClick,
+    userTrendChartRef,
+    handleUserTrendLegendClick,
   };
 };

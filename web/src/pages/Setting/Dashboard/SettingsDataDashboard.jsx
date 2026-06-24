@@ -41,6 +41,7 @@ export default function DataDashboard(props) {
     DataExportEnabled: false,
     DataExportInterval: '',
     DataExportDefaultTime: '',
+    DataExportUserRankingLimit: '',
   });
   const refForm = useRef();
   const [inputsRow, setInputsRow] = useState(inputs);
@@ -152,6 +153,23 @@ export default function DataDashboard(props) {
                     setInputs({
                       ...inputs,
                       DataExportDefaultTime: String(value),
+                    })
+                  }
+                />
+              </Col>
+              <Col xs={24} sm={12} md={8} lg={8} xl={8}>
+                <Form.InputNumber
+                  label={t('用户消耗排行榜数量')}
+                  step={1}
+                  min={1}
+                  suffix={t('人')}
+                  extraText={t('控制数据看板中用户消耗排行和趋势最多展示的用户数')}
+                  placeholder={t('用户消耗排行榜数量')}
+                  field={'DataExportUserRankingLimit'}
+                  onChange={(value) =>
+                    setInputs({
+                      ...inputs,
+                      DataExportUserRankingLimit: String(value),
                     })
                   }
                 />

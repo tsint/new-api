@@ -63,6 +63,8 @@ const Dashboard = () => {
   // ========== 图表管理 ==========
   const dashboardCharts = useDashboardCharts(
     dashboardData.dataExportDefaultTime,
+    dashboardData.userMetric,
+    dashboardData.userRankingLimit,
     dashboardData.setTrendData,
     dashboardData.setConsumeQuota,
     dashboardData.setTimes,
@@ -90,8 +92,22 @@ const Dashboard = () => {
     if (dashboardData.isAdminUser) {
       const userData = await dashboardData.loadUserQuotaData();
       if (userData && userData.length > 0) {
-        dashboardCharts.updateUserChartData(userData);
+        dashboardCharts.updateUserChartData(userData, dashboardData.userMetric);
       }
+    }
+  };
+
+  const handleMetricChange = async (value) => {
+    dashboardData.setUserMetric(value);
+
+    const data = await dashboardData.loadQuotaData();
+    if (data && data.length > 0) {
+      dashboardCharts.updateChartData(data);
+    }
+
+    const userData = await dashboardData.loadUserQuotaData();
+    if (userData && userData.length > 0) {
+      dashboardCharts.updateUserChartData(userData, value);
     }
   };
 
@@ -197,6 +213,12 @@ const Dashboard = () => {
             spec_user_rank={dashboardCharts.spec_user_rank}
             spec_user_trend={dashboardCharts.spec_user_trend}
             isAdminUser={dashboardData.isAdminUser}
+            userMetric={dashboardData.userMetric}
+            onMetricChange={handleMetricChange}
+            mainChartRef={dashboardCharts.mainChartRef}
+            onMainLegendClick={dashboardCharts.handleMainLegendClick}
+            userTrendChartRef={dashboardCharts.userTrendChartRef}
+            onUserTrendLegendClick={dashboardCharts.handleUserTrendLegendClick}
             CARD_PROPS={CARD_PROPS}
             CHART_CONFIG={CHART_CONFIG}
             FLEX_CENTER_GAP2={FLEX_CENTER_GAP2}

@@ -48,6 +48,7 @@ const DashboardSetting = () => {
     DataExportEnabled: false,
     DataExportDefaultTime: 'hour',
     DataExportInterval: 5,
+    DataExportUserRankingLimit: 10,
   });
 
   let [loading, setLoading] = useState(false);

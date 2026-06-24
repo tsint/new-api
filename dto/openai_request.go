@@ -234,10 +234,11 @@ type ToolCallRequest struct {
 }
 
 type FunctionRequest struct {
-	Description string `json:"description,omitempty"`
-	Name        string `json:"name"`
-	Parameters  any    `json:"parameters,omitempty"`
-	Arguments   string `json:"arguments,omitempty"`
+	Description string          `json:"description,omitempty"`
+	Name        string          `json:"name"`
+	Parameters  any             `json:"parameters,omitempty"`
+	Arguments   string          `json:"arguments,omitempty"`
+	Strict      json.RawMessage `json:"strict,omitempty"`
 }
 
 type StreamOptions struct {
