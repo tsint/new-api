@@ -180,9 +180,17 @@ func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
 		if (info.RelayFormat == types.RelayFormatClaude || info.RelayFormat == types.RelayFormatGemini) &&
 			info.RelayMode != relayconstant.RelayModeResponses &&
 			info.RelayMode != relayconstant.RelayModeResponsesCompact {
-			return fmt.Sprintf("%s/v1/chat/completions", info.ChannelBaseUrl), nil
+			requestURL := "/v1/chat/completions"
+			if info.ChannelOtherSettings.SkipV1Prefix {
+				requestURL = relaycommon.StripV1Prefix(requestURL)
+			}
+			return fmt.Sprintf("%s%s", info.ChannelBaseUrl, requestURL), nil
 		}
-		return relaycommon.GetFullRequestURL(info.ChannelBaseUrl, info.RequestURLPath, info.ChannelType), nil
+		requestURL := info.RequestURLPath
+		if info.ChannelOtherSettings.SkipV1Prefix {
+			requestURL = relaycommon.StripV1Prefix(requestURL)
+		}
+		return relaycommon.GetFullRequestURL(info.ChannelBaseUrl, requestURL, info.ChannelType), nil
 	}
 }
 

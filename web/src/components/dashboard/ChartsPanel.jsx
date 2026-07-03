@@ -36,6 +36,8 @@ const ChartsPanel = ({
   onMetricChange,
   mainChartRef,
   onMainLegendClick,
+  modelLineChartRef,
+  onModelLineLegendClick,
   userTrendChartRef,
   onUserTrendLegendClick,
   CARD_PROPS,
@@ -101,7 +103,12 @@ const ChartsPanel = ({
           />
         )}
         {activeChartTab === '2' && (
-          <VChart spec={spec_model_line} option={CHART_CONFIG} />
+          <VChart
+            ref={modelLineChartRef}
+            spec={spec_model_line}
+            option={CHART_CONFIG}
+            onLegendItemClick={onModelLineLegendClick}
+          />
         )}
         {activeChartTab === '3' && (
           <VChart spec={spec_pie} option={CHART_CONFIG} />

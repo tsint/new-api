@@ -27,6 +27,7 @@ import {
   getQuotaWithUnit,
   buildUserRankAxisMax,
   buildUserRankChartPadding,
+  buildUserRankLeftAxis,
   userRankLabelOptions,
   userRankLabelStyle,
 } from '../../helpers';
@@ -280,7 +281,7 @@ export const useDashboardCharts = (
   const [spec_user_rank, setSpecUserRank] = useState({
     type: 'bar',
     data: [{ id: 'userRankData', values: [] }],
-    padding: buildUserRankChartPadding(),
+    padding: buildUserRankChartPadding([]),
     xField: 'rawQuota',
     yField: 'User',
     seriesField: 'User',
@@ -302,11 +303,7 @@ export const useDashboardCharts = (
       style: userRankLabelStyle,
     },
     axes: [
-      {
-        orient: 'left',
-        type: 'band',
-        label: { visible: true },
-      },
+      buildUserRankLeftAxis(),
       {
         orient: 'bottom',
         type: 'linear',
@@ -396,6 +393,11 @@ export const useDashboardCharts = (
   const mainLegendItems = useRef([]);
   const mainChartRef = useRef(null);
 
+  // ========== 调用趋势图 Legend refs ==========
+  const lastSelectedModelLineLegendRef = useRef(null);
+  const modelLineLegendItems = useRef([]);
+  const modelLineChartRef = useRef(null);
+
   // ========== 数据处理函数 ==========
   const generateModelColors = useCallback((uniqueModels, modelColors) => {
     const newModelColors = {};
@@ -447,6 +449,8 @@ export const useDashboardCharts = (
       setModelColors(newModelColors);
       mainLegendItems.current = [...Array.from(uniqueModels), 'total'];
       lastSelectedMainLegendRef.current = null;
+      modelLineLegendItems.current = [...Array.from(uniqueModels)];
+      lastSelectedModelLineLegendRef.current = null;
 
       const aggregatedData = aggregateDataByTimeAndModel(
         data,
@@ -731,6 +735,7 @@ export const useDashboardCharts = (
 
       setSpecUserRank((prev) => ({
         ...prev,
+        padding: buildUserRankChartPadding(userRankValues),
         data: [{ id: 'userRankData', values: userRankValues }],
         title: {
           ...prev.title,
@@ -745,11 +750,7 @@ export const useDashboardCharts = (
               : renderQuota(datum['rawQuota'] || 0, 2),
         },
         axes: [
-          {
-            orient: 'left',
-            type: 'band',
-            label: { visible: true },
-          },
+          buildUserRankLeftAxis(),
           {
             orient: 'bottom',
             type: 'linear',
@@ -865,6 +866,30 @@ export const useDashboardCharts = (
     lastSelectedMainLegendRef.current = newLastSelected;
   }, []);
 
+  // ========== 调用趋势图 Legend 点击处理 ==========
+  const handleModelLineLegendClick = useCallback((e) => {
+    const chart = modelLineChartRef.current;
+    if (!chart) return;
+
+    const clickedModel = e?.value?.[0];
+    if (!clickedModel) return;
+
+    const allModels = modelLineLegendItems.current;
+    const { action, selectedUsers, newLastSelected } = handleLegendToggle(
+      lastSelectedModelLineLegendRef.current,
+      clickedModel,
+      allModels,
+    );
+
+    if (action === 'restore') {
+      setTimeout(() => {
+        chart.setLegendSelectedDataByIndex(0, selectedUsers);
+      }, 0);
+    }
+
+    lastSelectedModelLineLegendRef.current = newLastSelected;
+  }, []);
+
   // ========== 用户趋势图 Legend 点击处理 ==========
   // 注意：使用 ref 读取最新状态，避免 React VChart 事件绑定闭包陷阱
   // 使用 setTimeout(..., 0) 将恢复操作延迟到下一个事件循环，
@@ -913,6 +938,8 @@ export const useDashboardCharts = (
     generateModelColors,
     mainChartRef,
     handleMainLegendClick,
+    modelLineChartRef,
+    handleModelLineLegendClick,
     userTrendChartRef,
     handleUserTrendLegendClick,
   };

@@ -217,6 +217,8 @@ const Dashboard = () => {
             onMetricChange={handleMetricChange}
             mainChartRef={dashboardCharts.mainChartRef}
             onMainLegendClick={dashboardCharts.handleMainLegendClick}
+            modelLineChartRef={dashboardCharts.modelLineChartRef}
+            onModelLineLegendClick={dashboardCharts.handleModelLineLegendClick}
             userTrendChartRef={dashboardCharts.userTrendChartRef}
             onUserTrendLegendClick={dashboardCharts.handleUserTrendLegendClick}
             CARD_PROPS={CARD_PROPS}

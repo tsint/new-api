@@ -36,6 +36,12 @@ func GetFullRequestURL(baseURL string, requestURL string, channelType int) strin
 	return fullRequestURL
 }
 
+// StripV1Prefix removes the /v1 prefix from a request URL path.
+// Used for OpenAI compatible channels that don't use the standard /v1 API path.
+func StripV1Prefix(requestURL string) string {
+	return strings.TrimPrefix(requestURL, "/v1")
+}
+
 func GetAPIVersion(c *gin.Context) string {
 	query := c.Request.URL.Query()
 	apiVersion := query.Get("api-version")

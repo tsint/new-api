@@ -51,4 +51,17 @@ describe('handleLegendToggle', () => {
     expect(step3.selectedUsers).toEqual(['liteng']);
     expect(step3.newLastSelected).toBe('liteng');
   });
+
+  it('should support model names for call trend chart legend toggle', () => {
+    const allModels = ['gpt-4', 'gpt-3.5-turbo', 'claude-3-opus'];
+
+    const selectResult = handleLegendToggle(null, 'gpt-4', allModels);
+    expect(selectResult.action).toBe('select');
+    expect(selectResult.selectedUsers).toEqual(['gpt-4']);
+
+    const deselectResult = handleLegendToggle('gpt-4', 'gpt-4', allModels);
+    expect(deselectResult.action).toBe('restore');
+    expect(deselectResult.selectedUsers).toEqual(allModels);
+    expect(deselectResult.newLastSelected).toBeNull();
+  });
 });
