@@ -29,6 +29,7 @@ export * from './token';
 export * from './boolean';
 export * from './dashboard';
 export * from './dashboard-user-rank';
+export * from './dashboard-user-trend';
 export * from './legend-toggle';
 export * from './model-policy-config';
 export * from './passkey';

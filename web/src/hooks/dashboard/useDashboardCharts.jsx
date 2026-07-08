@@ -28,6 +28,8 @@ import {
   buildUserRankAxisMax,
   buildUserRankChartPadding,
   buildUserRankLeftAxis,
+  buildUserTrendDetailView,
+  buildUserTrendSummaryView,
   userRankLabelOptions,
   userRankLabelStyle,
 } from '../../helpers';
@@ -329,7 +331,7 @@ export const useDashboardCharts = (
     data: [{ id: 'userTrendData', values: [] }],
     xField: 'Time',
     yField: 'rawQuota',
-    seriesField: 'User',
+    seriesField: 'Series',
     stack: false,
     legends: { visible: true, selectMode: 'single' },
     title: {
@@ -352,7 +354,7 @@ export const useDashboardCharts = (
       mark: {
         content: [
           {
-            key: (datum) => datum['User'],
+            key: (datum) => datum['Series'],
             value: (datum) => renderQuota(datum['rawQuota'] || 0, 4),
           },
         ],
@@ -360,7 +362,7 @@ export const useDashboardCharts = (
       dimension: {
         content: [
           {
-            key: (datum) => datum['User'],
+            key: (datum) => datum['Series'],
             value: (datum) => datum['rawQuota'] || 0,
           },
         ],
@@ -386,8 +388,12 @@ export const useDashboardCharts = (
 
   // ========== 用户趋势图 Legend 交互状态 ==========
   const [lastSelectedLegend, setLastSelectedLegend] = useState(null);
+  const [userTrendChartKey, setUserTrendChartKey] =
+    useState('user-trend-summary');
   const lastSelectedLegendRef = useRef(null);
   const userTrendAllUsers = useRef([]);
+  const userTrendSummaryValues = useRef([]);
+  const userTrendModelValuesByUser = useRef({});
   const userTrendChartRef = useRef(null);
   const lastSelectedMainLegendRef = useRef(null);
   const mainLegendItems = useRef([]);
@@ -714,11 +720,13 @@ export const useDashboardCharts = (
       const {
         rankingData,
         trendData: userTrend,
+        modelTrendData: userModelTrend,
         topUsers,
       } = processUserData(data, dataExportDefaultTime, limit, metric);
       userTrendAllUsers.current = topUsers || [];
       setLastSelectedLegend(null);
       lastSelectedLegendRef.current = null;
+      setUserTrendChartKey('user-trend-summary');
 
       const userRankValues = rankingData
         .map((item) => ({
@@ -777,15 +785,40 @@ export const useDashboardCharts = (
       const userTrendValues = userTrend.map((item) => ({
         Time: item.Time,
         User: item.User,
+        Series: item.User,
+        Type: 'user',
         rawQuota: item.Quota,
         Usage: isToken
           ? renderNumber(item.Quota)
           : getQuotaWithUnit(item.Quota, 4),
       }));
+      const userModelTrendValues = (userModelTrend || []).map((item) => ({
+        Time: item.Time,
+        User: item.User,
+        Model: item.Model,
+        Series: item.Model,
+        Type: 'model',
+        rawQuota: item.Quota,
+        Usage: isToken
+          ? renderNumber(item.Quota)
+          : getQuotaWithUnit(item.Quota, 4),
+      }));
+      userTrendSummaryValues.current = userTrendValues;
+      userTrendModelValuesByUser.current = userModelTrendValues.reduce(
+        (acc, item) => {
+          if (!acc[item.User]) {
+            acc[item.User] = [];
+          }
+          acc[item.User].push(item);
+          return acc;
+        },
+        {},
+      );
 
       setSpecUserTrend((prev) => ({
         ...prev,
         data: [{ id: 'userTrendData', values: userTrendValues }],
+        seriesField: 'Series',
         title: {
           ...prev.title,
           text: isToken ? t('用户Token消耗趋势') : t('用户消耗趋势'),
@@ -805,7 +838,7 @@ export const useDashboardCharts = (
           mark: {
             content: [
               {
-                key: (datum) => datum['User'],
+                key: (datum) => datum['Series'],
                 value: (datum) =>
                   isToken
                     ? renderNumber(datum['rawQuota'] || 0)
@@ -816,7 +849,7 @@ export const useDashboardCharts = (
           dimension: {
             content: [
               {
-                key: (datum) => datum['User'],
+                key: (datum) => datum['Series'],
                 value: (datum) => datum['rawQuota'] || 0,
               },
             ],
@@ -902,19 +935,46 @@ export const useDashboardCharts = (
     if (!clickedUser) return;
 
     const allUsers = userTrendAllUsers.current;
-    const { action, selectedUsers, newLastSelected } = handleLegendToggle(
+    if (!allUsers.includes(clickedUser)) {
+      return;
+    }
+    const { action, newLastSelected } = handleLegendToggle(
       lastSelectedLegendRef.current,
       clickedUser,
       allUsers,
     );
 
     if (action === 'restore') {
-      // 延迟到下一个事件循环，让 VChart 先完成内部处理
-      setTimeout(() => {
-        chart.setLegendSelectedDataByIndex(0, selectedUsers);
-      }, 0);
+      const summaryView = buildUserTrendSummaryView(
+        userTrendSummaryValues.current,
+        { userColors: USER_COLORS },
+      );
+      setSpecUserTrend((prev) => ({
+        ...prev,
+        data: [{ id: 'userTrendData', values: summaryView.values }],
+        seriesField: 'Series',
+        color: summaryView.color,
+      }));
+      setUserTrendChartKey(summaryView.key);
+    } else {
+      const detailView = buildUserTrendDetailView({
+        clickedUser,
+        allUsers,
+        summaryValues: userTrendSummaryValues.current,
+        modelValuesByUser: userTrendModelValuesByUser.current,
+        userColors: USER_COLORS,
+        modelColors: modelColorMap,
+        getModelColor: modelToColor,
+      });
+
+      setSpecUserTrend((prev) => ({
+        ...prev,
+        data: [{ id: 'userTrendData', values: detailView.values }],
+        seriesField: 'Series',
+        color: detailView.color,
+      }));
+      setUserTrendChartKey(detailView.key);
     }
-    // 'select' 时 VChart single 模式已自动处理，只需更新追踪状态
     setLastSelectedLegend(newLastSelected);
     lastSelectedLegendRef.current = newLastSelected;
   }, []);
@@ -941,6 +1001,7 @@ export const useDashboardCharts = (
     modelLineChartRef,
     handleModelLineLegendClick,
     userTrendChartRef,
+    userTrendChartKey,
     handleUserTrendLegendClick,
   };
 };

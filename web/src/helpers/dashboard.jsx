@@ -396,7 +396,12 @@ export const generateChartTimePoints = (
 };
 
 // ========== 用户维度数据处理 ==========
-export const processUserData = (data, dataExportDefaultTime, limit = 10, metric = 'quota') => {
+export const processUserData = (
+  data,
+  dataExportDefaultTime,
+  limit = 10,
+  metric = 'quota',
+) => {
   const valueKey = metric === 'token' ? 'token_used' : 'quota';
 
   const userTotal = new Map();
@@ -405,9 +410,7 @@ export const processUserData = (data, dataExportDefaultTime, limit = 10, metric 
     userTotal.set(item.username, prev + (item[valueKey] || 0));
   });
 
-  const sorted = Array.from(userTotal.entries()).sort(
-    (a, b) => b[1] - a[1],
-  );
+  const sorted = Array.from(userTotal.entries()).sort((a, b) => b[1] - a[1]);
   const topUsers = sorted.slice(0, limit).map(([u]) => u);
   const topUserSet = new Set(topUsers);
 
@@ -419,6 +422,8 @@ export const processUserData = (data, dataExportDefaultTime, limit = 10, metric 
   const showYear = isDataCrossYear(data.map((item) => item.created_at));
 
   const timeUserMap = new Map();
+  const timeUserModelMap = new Map();
+  const userModelMap = new Map();
   const allTimePoints = new Set();
 
   data.forEach((item) => {
@@ -433,10 +438,23 @@ export const processUserData = (data, dataExportDefaultTime, limit = 10, metric 
     const key = `${timeKey}-${user}`;
     const prev = timeUserMap.get(key) || { quota: 0 };
     timeUserMap.set(key, { quota: prev.quota + (item[valueKey] || 0) });
+
+    const model = item.model_name || 'unknown';
+    if (!userModelMap.has(user)) {
+      userModelMap.set(user, new Set());
+    }
+    userModelMap.get(user).add(model);
+
+    const modelKey = `${timeKey}-${user}-${model}`;
+    const prevModel = timeUserModelMap.get(modelKey) || { quota: 0 };
+    timeUserModelMap.set(modelKey, {
+      quota: prevModel.quota + (item[valueKey] || 0),
+    });
   });
 
   const sortedTimePoints = Array.from(allTimePoints).sort();
   const trendData = [];
+  const modelTrendData = [];
   sortedTimePoints.forEach((time) => {
     topUsers.forEach((user) => {
       const key = `${time}-${user}`;
@@ -446,8 +464,20 @@ export const processUserData = (data, dataExportDefaultTime, limit = 10, metric 
         User: user,
         Quota: val?.quota || 0,
       });
+
+      const models = Array.from(userModelMap.get(user) || []).sort();
+      models.forEach((model) => {
+        const modelKey = `${time}-${user}-${model}`;
+        const modelVal = timeUserModelMap.get(modelKey);
+        modelTrendData.push({
+          Time: time,
+          User: user,
+          Model: model,
+          Quota: modelVal?.quota || 0,
+        });
+      });
     });
   });
 
-  return { rankingData, trendData, topUsers };
+  return { rankingData, trendData, modelTrendData, topUsers };
 };

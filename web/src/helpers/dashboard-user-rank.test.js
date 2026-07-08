@@ -66,6 +66,17 @@ describe('dashboard user rank chart', () => {
     expect(axis.label.autoHide).toBe(false);
   });
 
+  it('keeps short latin usernames close to the plot area like the call trend chart', () => {
+    const padding = buildUserRankChartPadding([
+      { User: 'duxf' },
+      { User: 'liteng' },
+      { User: 'hanmc' },
+      { User: 'duangd' },
+    ]);
+
+    expect(padding.left).toBeLessThanOrEqual(32);
+  });
+
   it('reserves more left padding for CJK usernames', () => {
     const latin = buildUserRankLeftPadding([{ User: 'abcdef' }]);
     const cjk = buildUserRankLeftPadding([{ User: '用户名一二三四' }]);

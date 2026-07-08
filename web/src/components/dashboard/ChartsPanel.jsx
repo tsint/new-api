@@ -39,6 +39,7 @@ const ChartsPanel = ({
   modelLineChartRef,
   onModelLineLegendClick,
   userTrendChartRef,
+  userTrendChartKey,
   onUserTrendLegendClick,
   CARD_PROPS,
   CHART_CONFIG,
@@ -121,6 +122,7 @@ const ChartsPanel = ({
         )}
         {activeChartTab === '6' && isAdminUser && (
           <VChart
+            key={userTrendChartKey}
             ref={userTrendChartRef}
             spec={spec_user_trend}
             option={CHART_CONFIG}

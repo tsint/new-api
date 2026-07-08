@@ -220,6 +220,7 @@ const Dashboard = () => {
             modelLineChartRef={dashboardCharts.modelLineChartRef}
             onModelLineLegendClick={dashboardCharts.handleModelLineLegendClick}
             userTrendChartRef={dashboardCharts.userTrendChartRef}
+            userTrendChartKey={dashboardCharts.userTrendChartKey}
             onUserTrendLegendClick={dashboardCharts.handleUserTrendLegendClick}
             CARD_PROPS={CARD_PROPS}
             CHART_CONFIG={CHART_CONFIG}

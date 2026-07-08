@@ -2,9 +2,9 @@ export const USER_RANK_AXIS_HEADROOM_RATIO = 1.35;
 export const USER_RANK_LABEL_RIGHT_PADDING = 96;
 export const USER_RANK_AXIS_MIN_LEFT_PADDING = 12;
 export const USER_RANK_AXIS_MAX_LEFT_PADDING = 200;
-export const USER_RANK_AXIS_CHAR_WIDTH = 8;
-export const USER_RANK_AXIS_CJK_CHAR_WIDTH = 14;
-export const USER_RANK_AXIS_LABEL_MARGIN = 12;
+export const USER_RANK_AXIS_CHAR_WIDTH = 4;
+export const USER_RANK_AXIS_CJK_CHAR_WIDTH = 10;
+export const USER_RANK_AXIS_LABEL_MARGIN = 4;
 export const USER_RANK_AXIS_LABEL_MAX_WIDTH = 180;
 
 export const userRankLabelStyle = {
@@ -23,7 +23,9 @@ const isCJK = (text) => /[一-龥぀-ゟ゠-ヿ가-힯]/.test(text);
 const estimateTextWidth = (text) => {
   let width = 0;
   for (const char of String(text || '')) {
-    width += isCJK(char) ? USER_RANK_AXIS_CJK_CHAR_WIDTH : USER_RANK_AXIS_CHAR_WIDTH;
+    width += isCJK(char)
+      ? USER_RANK_AXIS_CJK_CHAR_WIDTH
+      : USER_RANK_AXIS_CHAR_WIDTH;
   }
   return width;
 };

@@ -154,9 +154,9 @@ func GetQuotaDataGroupByUser(startTime int64, endTime int64, granularity string)
 	var quotaDatas []*QuotaData
 	timeBucket := buildTimeBucketExpr(granularity)
 	err = DB.Table("quota_data").
-		Select("username, "+timeBucket+" as created_at, sum(count) as count, sum(quota) as quota, sum(token_used) as token_used").
+		Select("username, model_name, "+timeBucket+" as created_at, sum(count) as count, sum(quota) as quota, sum(token_used) as token_used").
 		Where("created_at >= ? and created_at <= ?", startTime, endTime).
-		Group("username, " + timeBucket).
+		Group("username, model_name, " + timeBucket).
 		Find(&quotaDatas).Error
 	return quotaDatas, err
 }
