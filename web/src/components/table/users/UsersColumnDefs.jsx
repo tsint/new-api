@@ -334,8 +334,8 @@ export const getUsersColumns = ({
     {
       title: t('分组'),
       dataIndex: 'group',
-      render: (text, record, index) => {
-        return <div>{renderGroup(text)}</div>;
+      render: (text, record) => {
+        return <div>{renderGroup(record.groups || record.group)}</div>;
       },
     },
     {

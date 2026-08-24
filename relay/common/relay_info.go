@@ -423,9 +423,9 @@ func genBaseRelayInfo(c *gin.Context, request dto.Request) *RelayInfo {
 	//paramOverride := common.GetContextKeyStringMap(c, constant.ContextKeyChannelParamOverride)
 
 	tokenGroup := common.GetContextKeyString(c, constant.ContextKeyTokenGroup)
-	// 当令牌分组为空时，表示使用用户分组
+	// 当令牌分组为空时，使用路由分组（多组用户为空串哨兵，由渠道选择层逐组尝试）
 	if tokenGroup == "" {
-		tokenGroup = common.GetContextKeyString(c, constant.ContextKeyUserGroup)
+		tokenGroup = common.GetContextKeyString(c, constant.ContextKeyUsingGroup)
 	}
 
 	startTime := common.GetContextKeyTime(c, constant.ContextKeyRequestStartTime)

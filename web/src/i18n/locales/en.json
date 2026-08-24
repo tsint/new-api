@@ -3675,6 +3675,8 @@
     "默认折叠侧边栏": "Default collapse sidebar",
     "默认测试模型": "Default Test Model",
     "默认用户消息": "Default User Message",
-    "默认补全倍率": "Default completion ratio"
+    "默认补全倍率": "Default completion ratio",
+    "请选择分组（可多选）": "Select groups (multiple allowed)",
+    "第一个选中的分组为主组": "The first selected group is the primary group"
   }
 }

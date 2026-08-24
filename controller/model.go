@@ -154,7 +154,7 @@ func ListModels(c *gin.Context, modelType int) {
 		}
 	} else {
 		userId := c.GetInt("id")
-		userGroup, err := model.GetUserGroup(userId, false)
+		userCache, err := model.GetUserCache(userId)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
@@ -162,14 +162,10 @@ func ListModels(c *gin.Context, modelType int) {
 			})
 			return
 		}
-		group := userGroup
 		tokenGroup := common.GetContextKeyString(c, constant.ContextKeyTokenGroup)
-		if tokenGroup != "" {
-			group = tokenGroup
-		}
 		var models []string
 		if tokenGroup == "auto" {
-			for _, autoGroup := range service.GetUserAutoGroup(userGroup) {
+			for _, autoGroup := range service.GetUserAutoGroupByGroups(userCache.GetGroupList()) {
 				groupModels := model.GetGroupEnabledModels(autoGroup)
 				for _, g := range groupModels {
 					if !common.StringsContains(models, g) {
@@ -177,8 +173,18 @@ func ListModels(c *gin.Context, modelType int) {
 					}
 				}
 			}
+		} else if tokenGroup != "" {
+			models = model.GetGroupEnabledModels(tokenGroup)
 		} else {
-			models = model.GetGroupEnabledModels(group)
+			// multi-group user: union across all groups; single-group: same as primary-only
+			for _, grp := range userCache.GetGroupList() {
+				groupModels := model.GetGroupEnabledModels(grp)
+				for _, g := range groupModels {
+					if !common.StringsContains(models, g) {
+						models = append(models, g)
+					}
+				}
+			}
 		}
 		for _, modelName := range models {
 			if !acceptUnsetRatioModel {

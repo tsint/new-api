@@ -40,6 +40,7 @@ type User struct {
 	UsedQuota        int            `json:"used_quota" gorm:"type:int;default:0;column:used_quota"` // used quota
 	RequestCount     int            `json:"request_count" gorm:"type:int;default:0;"`               // request number
 	Group            string         `json:"group" gorm:"type:varchar(64);default:'default'"`
+	Groups           string         `json:"groups" gorm:"type:text"` // 逗号分隔绑定组列表，第一个为主组
 	AffCode          string         `json:"aff_code" gorm:"type:varchar(32);column:aff_code;uniqueIndex"`
 	AffCount         int            `json:"aff_count" gorm:"type:int;default:0;column:aff_count"`
 	AffQuota         int            `json:"aff_quota" gorm:"type:int;default:0;column:aff_quota"`           // 邀请剩余额度
@@ -56,6 +57,7 @@ func (user *User) ToBaseUser() *UserBase {
 	cache := &UserBase{
 		Id:       user.Id,
 		Group:    user.Group,
+		Groups:   user.Groups,
 		Quota:    user.Quota,
 		Status:   user.Status,
 		Username: user.Username,
@@ -244,26 +246,39 @@ func SearchUsers(keyword string, group string, startIdx int, num int) ([]*User, 
 	// 构建搜索条件
 	likeCondition := "username LIKE ? OR email LIKE ? OR display_name LIKE ?"
 
+	// 共用 group 条件：匹配主 group 或 groups 逗号列表中的任一组
+	groupCondition := ""
+	groupArgs := []interface{}{}
+	if group != "" {
+		pattern := "%," + group + ",%"
+		if common.UsingMySQL {
+			groupCondition = "(" + commonGroupCol + " = ? OR CONCAT(',', groups, ',') LIKE ?)"
+		} else {
+			groupCondition = "(" + commonGroupCol + " = ? OR (',' || groups || ',') LIKE ?)"
+		}
+		groupArgs = []interface{}{group, pattern}
+	}
+
 	// 尝试将关键字转换为整数ID
 	keywordInt, err := strconv.Atoi(keyword)
 	if err == nil {
 		// 如果是数字，同时搜索ID和其他字段
 		likeCondition = "id = ? OR " + likeCondition
+		keywordArgs := []interface{}{keywordInt, "%" + keyword + "%", "%" + keyword + "%", "%" + keyword + "%"}
 		if group != "" {
-			query = query.Where("("+likeCondition+") AND "+commonGroupCol+" = ?",
-				keywordInt, "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%", group)
+			query = query.Where("("+likeCondition+") AND "+groupCondition,
+				append(keywordArgs, groupArgs...)...)
 		} else {
-			query = query.Where(likeCondition,
-				keywordInt, "%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
+			query = query.Where(likeCondition, keywordArgs...)
 		}
 	} else {
 		// 非数字关键字，只搜索字符串字段
+		keywordArgs := []interface{}{"%" + keyword + "%", "%" + keyword + "%", "%" + keyword + "%"}
 		if group != "" {
-			query = query.Where("("+likeCondition+") AND "+commonGroupCol+" = ?",
-				"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%", group)
+			query = query.Where("("+likeCondition+") AND "+groupCondition,
+				append(keywordArgs, groupArgs...)...)
 		} else {
-			query = query.Where(likeCondition,
-				"%"+keyword+"%", "%"+keyword+"%", "%"+keyword+"%")
+			query = query.Where(likeCondition, keywordArgs...)
 		}
 	}
 
@@ -523,6 +538,7 @@ func (user *User) Edit(updatePassword bool) error {
 		"username":     newUser.Username,
 		"display_name": newUser.DisplayName,
 		"group":        newUser.Group,
+		"groups":       newUser.Groups,
 		"remark":       newUser.Remark,
 	}
 	if updatePassword {
@@ -1045,4 +1061,42 @@ func RootUserExists() bool {
 		return false
 	}
 	return true
+}
+
+func ParseGroupList(s string) []string {
+	seen := make(map[string]bool)
+	result := make([]string, 0)
+	for _, part := range strings.Split(s, ",") {
+		g := strings.TrimSpace(part)
+		if g == "" || seen[g] {
+			continue
+		}
+		seen[g] = true
+		result = append(result, g)
+	}
+	return result
+}
+
+func (user *User) NormalizeGroups() {
+	groups := ParseGroupList(user.Groups)
+	if len(groups) == 0 {
+		groups = ParseGroupList(user.Group)
+	}
+	if len(groups) == 0 {
+		user.Groups = ""
+		user.Group = "default"
+		return
+	}
+	user.Groups = strings.Join(groups, ",")
+	user.Group = groups[0]
+}
+
+func (user *User) GetGroupList() []string {
+	if groups := ParseGroupList(user.Groups); len(groups) > 0 {
+		return groups
+	}
+	if groups := ParseGroupList(user.Group); len(groups) > 0 {
+		return groups
+	}
+	return []string{"default"}
 }

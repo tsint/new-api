@@ -3642,6 +3642,8 @@
     "默认折叠侧边栏": "Réduire la barre latérale par défaut",
     "默认测试模型": "Modèle de test par défaut",
     "默认用户消息": "Bonjour",
-    "默认补全倍率": "Taux de complétion par défaut"
+    "默认补全倍率": "Taux de complétion par défaut",
+    "请选择分组（可多选）": "Sélectionnez des groupes (choix multiple)",
+    "第一个选中的分组为主组": "Le premier groupe sélectionné est le groupe principal"
   }
 }

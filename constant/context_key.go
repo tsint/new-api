@@ -48,8 +48,9 @@ const (
 	ContextKeyUserQuota   ContextKey = "user_quota"
 	ContextKeyUserStatus  ContextKey = "user_status"
 	ContextKeyUserEmail   ContextKey = "user_email"
-	ContextKeyUserGroup   ContextKey = "user_group"
-	ContextKeyUsingGroup  ContextKey = "group"
+	ContextKeyUserGroup      ContextKey = "user_group"
+	ContextKeyUserGroupList ContextKey = "user_group_list"
+	ContextKeyUsingGroup     ContextKey = "group"
 	ContextKeyUserName    ContextKey = "username"
 
 	ContextKeyLocalCountTokens ContextKey = "local_count_tokens"

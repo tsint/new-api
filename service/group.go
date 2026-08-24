@@ -7,28 +7,39 @@ import (
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 )
 
-func GetUserUsableGroups(userGroup string) map[string]string {
+func GetUserUsableGroupsByGroups(userGroups []string) map[string]string {
 	groupsCopy := setting.GetUserUsableGroupsCopy()
-	if userGroup != "" {
-		specialSettings, b := ratio_setting.GetGroupRatioSetting().GroupSpecialUsableGroup.Get(userGroup)
-		if b {
-			// 处理特殊可用分组
-			for specialGroup, desc := range specialSettings {
-				if strings.HasPrefix(specialGroup, "-:") {
-					// 移除分组
-					groupToRemove := strings.TrimPrefix(specialGroup, "-:")
-					delete(groupsCopy, groupToRemove)
-				} else if strings.HasPrefix(specialGroup, "+:") {
-					// 添加分组
-					groupToAdd := strings.TrimPrefix(specialGroup, "+:")
-					groupsCopy[groupToAdd] = desc
-				} else {
-					// 直接添加分组
-					groupsCopy[specialGroup] = desc
-				}
+	if len(userGroups) == 0 {
+		return groupsCopy
+	}
+	groupsToAdd := make(map[string]string)
+	groupsToRemove := make(map[string]bool)
+	special := ratio_setting.GetGroupRatioSetting().GroupSpecialUsableGroup
+	for _, userGroup := range userGroups {
+		specialSettings, ok := special.Get(userGroup)
+		if !ok {
+			continue
+		}
+		for specialGroup, desc := range specialSettings {
+			if strings.HasPrefix(specialGroup, "-:") {
+				groupsToRemove[strings.TrimPrefix(specialGroup, "-:")] = true
+			} else if strings.HasPrefix(specialGroup, "+:") {
+				groupsToAdd[strings.TrimPrefix(specialGroup, "+:")] = desc
+			} else {
+				groupsToAdd[specialGroup] = desc
 			}
 		}
-		// 如果userGroup不在UserUsableGroups中，返回UserUsableGroups + userGroup
+	}
+	for g, desc := range groupsToAdd {
+		groupsCopy[g] = desc
+	}
+	for g := range groupsToRemove {
+		delete(groupsCopy, g)
+	}
+	for _, userGroup := range userGroups {
+		if userGroup == "" {
+			continue
+		}
 		if _, ok := groupsCopy[userGroup]; !ok {
 			groupsCopy[userGroup] = "用户分组"
 		}
@@ -36,14 +47,21 @@ func GetUserUsableGroups(userGroup string) map[string]string {
 	return groupsCopy
 }
 
+func GetUserUsableGroups(userGroup string) map[string]string {
+	return GetUserUsableGroupsByGroups([]string{userGroup})
+}
+
 func GroupInUserUsableGroups(userGroup, groupName string) bool {
-	_, ok := GetUserUsableGroups(userGroup)[groupName]
+	return GroupInUserUsableGroupsByGroups([]string{userGroup}, groupName)
+}
+
+func GroupInUserUsableGroupsByGroups(userGroups []string, groupName string) bool {
+	_, ok := GetUserUsableGroupsByGroups(userGroups)[groupName]
 	return ok
 }
 
-// GetUserAutoGroup 根据用户分组获取自动分组设置
-func GetUserAutoGroup(userGroup string) []string {
-	groups := GetUserUsableGroups(userGroup)
+func GetUserAutoGroupByGroups(userGroups []string) []string {
+	groups := GetUserUsableGroupsByGroups(userGroups)
 	autoGroups := make([]string, 0)
 	for _, group := range setting.GetAutoGroups() {
 		if _, ok := groups[group]; ok {
@@ -51,6 +69,10 @@ func GetUserAutoGroup(userGroup string) []string {
 		}
 	}
 	return autoGroups
+}
+
+func GetUserAutoGroup(userGroup string) []string {
+	return GetUserAutoGroupByGroups([]string{userGroup})
 }
 
 // GetUserGroupRatio 获取用户使用某个分组的倍率

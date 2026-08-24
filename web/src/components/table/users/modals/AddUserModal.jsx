@@ -49,7 +49,7 @@ const AddUserModal = (props) => {
     username: '',
     display_name: '',
     password: '',
-    group: 'default',
+    groups: ['default'],
     remark: '',
   });
 
@@ -68,7 +68,9 @@ const AddUserModal = (props) => {
 
   const submit = async (values) => {
     setLoading(true);
-    const res = await API.post(`/api/user/`, values);
+    const payload = { ...values };
+    payload.groups = Array.isArray(values.groups) ? values.groups.join(',') : values.groups;
+    const res = await API.post(`/api/user/`, payload);
     const { success, message } = res.data;
     if (success) {
       showSuccess(t('用户账户创建成功！'));
@@ -182,13 +184,15 @@ const AddUserModal = (props) => {
                   </Col>
                   <Col span={24}>
                     <Form.Select
-                      field='group'
+                      field='groups'
                       label={t('分组')}
-                      placeholder={t('请选择分组')}
+                      placeholder={t('请选择分组（可多选）')}
                       optionList={groupOptions}
+                      multiple
                       allowAdditions
                       search
                       rules={[{ required: true, message: t('请选择分组') }]}
+                      extraText={t('第一个选中的分组为主组')}
                     />
                   </Col>
                   <Col span={24}>

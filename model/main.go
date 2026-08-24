@@ -284,6 +284,7 @@ func migrateDB() error {
 	if err != nil {
 		return err
 	}
+	migrateUserGroups()
 	if common.UsingSQLite {
 		if err := ensureSubscriptionPlanTableSQLite(); err != nil {
 			return err
@@ -352,6 +353,7 @@ func migrateDBFast() error {
 			return err
 		}
 	}
+	migrateUserGroups()
 	if common.UsingSQLite {
 		if err := ensureSubscriptionPlanTableSQLite(); err != nil {
 			return err
@@ -447,6 +449,21 @@ PRIMARY KEY (` + "`id`" + `)
 		}
 	}
 	return nil
+}
+
+// migrateUserGroups 为旧版本单组用户回填 groups 列（幂等）
+func migrateUserGroups() {
+	if !DB.Migrator().HasColumn(&User{}, "groups") {
+		return
+	}
+	err := DB.Model(&User{}).
+		Where("groups IS NULL OR groups = ?", "").
+		Update("groups", gorm.Expr(commonGroupCol)).Error
+	if err != nil {
+		common.SysError("failed to backfill user groups: " + err.Error())
+		return
+	}
+	common.SysLog("user groups backfill checked")
 }
 
 // migrateTokenModelLimitsToText migrates model_limits column from varchar(1024) to text

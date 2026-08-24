@@ -96,7 +96,8 @@ func Distribute() func(c *gin.Context) {
 						return
 					}
 					if playgroundRequest.Group != "" {
-						if !service.GroupInUserUsableGroups(usingGroup, playgroundRequest.Group) && playgroundRequest.Group != usingGroup {
+						groupList := service.UserGroupListFromCtx(c)
+						if !service.GroupInUserUsableGroupsByGroups(groupList, playgroundRequest.Group) {
 							abortWithOpenAiMessage(c, http.StatusForbidden, i18n.T(c, i18n.MsgDistributorGroupAccessDenied))
 							return
 						}
@@ -116,8 +117,7 @@ func Distribute() func(c *gin.Context) {
 						} else if !common.ChannelTypeSupportsFormatGroup(preferred.Type, formatGroup) {
 							common.SysLog(fmt.Sprintf("channel affinity skipped channel #%d because type %d does not support format group %d", preferred.Id, preferred.Type, formatGroup))
 						} else if usingGroup == "auto" {
-							userGroup := common.GetContextKeyString(c, constant.ContextKeyUserGroup)
-							autoGroups := service.GetUserAutoGroup(userGroup)
+							autoGroups := service.GetUserAutoGroupByGroups(service.UserGroupListFromCtx(c))
 							for _, g := range autoGroups {
 								if model.IsChannelEnabledForGroupModel(g, modelRequest.Model, preferred.Id) {
 									selectGroup = g
@@ -126,6 +126,14 @@ func Distribute() func(c *gin.Context) {
 									service.MarkChannelAffinityUsed(c, g, preferred.Id)
 									break
 								}
+							}
+						} else if usingGroup == "" {
+							userGroups := service.UserGroupListFromCtx(c)
+							if g, ok := service.MatchGroupForChannel(userGroups, modelRequest.Model, preferred.Id); ok {
+								selectGroup = g
+								common.SetContextKey(c, constant.ContextKeyAutoGroup, g)
+								channel = preferred
+								service.MarkChannelAffinityUsed(c, g, preferred.Id)
 							}
 						} else if model.IsChannelEnabledForGroupModel(usingGroup, modelRequest.Model, preferred.Id) {
 							channel = preferred
@@ -147,6 +155,8 @@ func Distribute() func(c *gin.Context) {
 						showGroup := usingGroup
 						if usingGroup == "auto" {
 							showGroup = fmt.Sprintf("auto(%s)", selectGroup)
+						} else if usingGroup == "" {
+							showGroup = strings.Join(service.UserGroupListFromCtx(c), ",")
 						}
 						message := i18n.T(c, i18n.MsgDistributorGetChannelFailed, map[string]any{"Group": showGroup, "Model": modelRequest.Model, "Error": err.Error()})
 						// 如果错误，但是渠道不为空，说明是数据库一致性问题

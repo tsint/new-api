@@ -524,7 +524,7 @@ func GetUserModels(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	groups := service.GetUserUsableGroups(user.Group)
+	groups := service.GetUserUsableGroupsByGroups(user.GetGroupList())
 	var models []string
 	for group := range groups {
 		for _, g := range model.GetGroupEnabledModels(group) {
@@ -573,6 +573,7 @@ func UpdateUser(c *gin.Context) {
 		updatedUser.Password = "" // rollback to what it should be
 	}
 	updatePassword := updatedUser.Password != ""
+	updatedUser.NormalizeGroups()
 	if err := updatedUser.Edit(updatePassword); err != nil {
 		common.ApiError(c, err)
 		return
@@ -806,6 +807,8 @@ func CreateUser(c *gin.Context) {
 	err := common.DecodeJson(c.Request.Body, &user)
 	user.Username = strings.TrimSpace(user.Username)
 	user.Group = strings.TrimSpace(user.Group)
+	user.Groups = strings.TrimSpace(user.Groups)
+	user.NormalizeGroups()
 	if err != nil || user.Username == "" || user.Password == "" {
 		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
 		return
@@ -816,9 +819,6 @@ func CreateUser(c *gin.Context) {
 	}
 	if user.DisplayName == "" {
 		user.DisplayName = user.Username
-	}
-	if user.Group == "" {
-		user.Group = "default"
 	}
 	myRole := c.GetInt("role")
 	if user.Role >= myRole {
@@ -831,6 +831,7 @@ func CreateUser(c *gin.Context) {
 		Password:    user.Password,
 		DisplayName: user.DisplayName,
 		Group:       user.Group,
+		Groups:      user.Groups,
 		Remark:      user.Remark,
 		Role:        user.Role, // 保持管理员设置的角色
 	}

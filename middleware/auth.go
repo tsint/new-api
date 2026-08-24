@@ -379,11 +379,11 @@ func TokenAuth() func(c *gin.Context) {
 
 		userCache.WriteContext(c)
 
-		userGroup := userCache.Group
+		groupList := userCache.GetGroupList()
 		tokenGroup := token.Group
 		if tokenGroup != "" {
-			// check common.UserUsableGroups[userGroup]
-			if _, ok := service.GetUserUsableGroups(userGroup)[tokenGroup]; !ok {
+			// check usable groups union across all bound groups
+			if _, ok := service.GetUserUsableGroupsByGroups(groupList)[tokenGroup]; !ok {
 				abortWithOpenAiMessage(c, http.StatusForbidden, fmt.Sprintf("无权访问 %s 分组", tokenGroup))
 				return
 			}
@@ -394,9 +394,8 @@ func TokenAuth() func(c *gin.Context) {
 					return
 				}
 			}
-			userGroup = tokenGroup
 		}
-		common.SetContextKey(c, constant.ContextKeyUsingGroup, userGroup)
+		common.SetContextKey(c, constant.ContextKeyUsingGroup, resolveUsingGroup(tokenGroup, groupList))
 
 		err = SetupContextForToken(c, token, parts...)
 		if err != nil {
@@ -436,4 +435,16 @@ func SetupContextForToken(c *gin.Context, token *model.Token, parts ...string) e
 		}
 	}
 	return nil
+}
+
+// resolveUsingGroup token 组优先；token 未指定且用户绑定多组时返回空串哨兵，
+// 由 service.CacheGetRandomSatisfiedChannel 按绑定顺序逐组尝试
+func resolveUsingGroup(tokenGroup string, groupList []string) string {
+	if tokenGroup != "" {
+		return tokenGroup
+	}
+	if len(groupList) > 1 {
+		return ""
+	}
+	return groupList[0]
 }

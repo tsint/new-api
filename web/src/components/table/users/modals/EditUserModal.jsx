@@ -92,7 +92,7 @@ const EditUserModal = (props) => {
     email: '',
     quota: 0,
     quota_amount: 0,
-    group: 'default',
+    groups: ['default'],
     remark: '',
   });
 
@@ -117,6 +117,7 @@ const EditUserModal = (props) => {
       data.quota_amount = Number(
         quotaToDisplayAmount(data.quota || 0).toFixed(6),
       );
+      data.groups = data.groups ? data.groups.split(',') : [data.group || 'default'];
       setInputs({ ...getInitValues(), ...data });
     } else {
       showError(message);
@@ -150,6 +151,8 @@ const EditUserModal = (props) => {
     let payload = { ...values };
     delete payload.quota;
     delete payload.quota_amount;
+    payload.groups = Array.isArray(values.groups) ? values.groups.join(',') : values.groups;
+    delete payload.group;
     if (userId) {
       payload.id = parseInt(userId);
     }
@@ -358,13 +361,15 @@ const EditUserModal = (props) => {
                     <Row gutter={12}>
                       <Col span={24}>
                         <Form.Select
-                          field='group'
+                          field='groups'
                           label={t('分组')}
-                          placeholder={t('请选择分组')}
+                          placeholder={t('请选择分组（可多选）')}
                           optionList={groupOptions}
+                          multiple
                           allowAdditions
                           search
                           rules={[{ required: true, message: t('请选择分组') }]}
+                          extraText={t('第一个选中的分组为主组')}
                         />
                       </Col>
 
