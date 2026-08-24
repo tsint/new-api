@@ -39,6 +39,36 @@ func SetupApiRequestHeader(info *common.RelayInfo, c *gin.Context, req *http.Hea
 	}
 }
 
+// applyClientHeadersPassthrough 默认将客户端请求头透传到上游请求，
+// 跳过 hop-by-hop、凭证类等不应转发的 header（与 header 透传规则共用同一个 skip list）。
+// 必须在 adaptor 的 SetupRequestHeader 之前调用：adaptor 的必要调整（如把 Authorization
+// 替换为渠道密钥）会覆盖透传值；Header Override 最后应用，优先级最高。
+// 渠道测试（IsChannelTest）不透传，避免把管理后台浏览器的 header 泄漏给上游。
+func applyClientHeadersPassthrough(c *gin.Context, header *http.Header, info *common.RelayInfo) {
+	if c == nil || c.Request == nil || header == nil {
+		return
+	}
+	if info != nil && info.IsChannelTest {
+		return
+	}
+	for name, values := range c.Request.Header {
+		if shouldSkipPassthroughHeader(name) {
+			continue
+		}
+		cloned := make([]string, 0, len(values))
+		for _, v := range values {
+			if strings.TrimSpace(v) == "" {
+				continue
+			}
+			cloned = append(cloned, v)
+		}
+		if len(cloned) == 0 {
+			continue
+		}
+		(*header)[http.CanonicalHeaderKey(name)] = cloned
+	}
+}
+
 const clientHeaderPlaceholderPrefix = "{client_header:"
 
 const (
@@ -299,6 +329,7 @@ func DoApiRequest(a Adaptor, c *gin.Context, info *common.RelayInfo, requestBody
 	if err != nil {
 		return nil, fmt.Errorf("new request failed: %w", err)
 	}
+	applyClientHeadersPassthrough(c, &req.Header, info)
 	headers := req.Header
 	err = a.SetupRequestHeader(c, &headers, info)
 	if err != nil {
@@ -330,6 +361,7 @@ func DoFormRequest(a Adaptor, c *gin.Context, info *common.RelayInfo, requestBod
 	if err != nil {
 		return nil, fmt.Errorf("new request failed: %w", err)
 	}
+	applyClientHeadersPassthrough(c, &req.Header, info)
 	// set form data
 	req.Header.Set("Content-Type", c.Request.Header.Get("Content-Type"))
 	headers := req.Header
@@ -357,6 +389,7 @@ func DoWssRequest(a Adaptor, c *gin.Context, info *common.RelayInfo, requestBody
 		return nil, fmt.Errorf("get request url failed: %w", err)
 	}
 	targetHeader := http.Header{}
+	applyClientHeadersPassthrough(c, &targetHeader, info)
 	err = a.SetupRequestHeader(c, &targetHeader, info)
 	if err != nil {
 		return nil, fmt.Errorf("setup request header failed: %w", err)
