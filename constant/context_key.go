@@ -41,17 +41,19 @@ const (
 	ContextKeyAutoGroup           ContextKey = "auto_group"
 	ContextKeyAutoGroupIndex      ContextKey = "auto_group_index"
 	ContextKeyAutoGroupRetryIndex ContextKey = "auto_group_retry_index"
+	// ContextKeyAutoGroupList 缓存本次请求计算出的 auto 候选组列表，避免重试时重复计算
+	ContextKeyAutoGroupList ContextKey = "auto_group_list"
 
 	/* user related keys */
-	ContextKeyUserId      ContextKey = "id"
-	ContextKeyUserSetting ContextKey = "user_setting"
-	ContextKeyUserQuota   ContextKey = "user_quota"
-	ContextKeyUserStatus  ContextKey = "user_status"
-	ContextKeyUserEmail   ContextKey = "user_email"
-	ContextKeyUserGroup      ContextKey = "user_group"
+	ContextKeyUserId        ContextKey = "id"
+	ContextKeyUserSetting   ContextKey = "user_setting"
+	ContextKeyUserQuota     ContextKey = "user_quota"
+	ContextKeyUserStatus    ContextKey = "user_status"
+	ContextKeyUserEmail     ContextKey = "user_email"
+	ContextKeyUserGroup     ContextKey = "user_group"
 	ContextKeyUserGroupList ContextKey = "user_group_list"
-	ContextKeyUsingGroup     ContextKey = "group"
-	ContextKeyUserName    ContextKey = "username"
+	ContextKeyUsingGroup    ContextKey = "group"
+	ContextKeyUserName      ContextKey = "username"
 
 	ContextKeyLocalCountTokens ContextKey = "local_count_tokens"
 

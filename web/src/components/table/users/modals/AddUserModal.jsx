@@ -34,6 +34,7 @@ import {
   Col,
 } from '@douyinfe/semi-ui';
 import { IconSave, IconClose, IconUserAdd } from '@douyinfe/semi-icons';
+import { GroupsOrderSorter } from './SortableGroupTags';
 import { useTranslation } from 'react-i18next';
 
 const { Text, Title } = Typography;
@@ -192,8 +193,9 @@ const AddUserModal = (props) => {
                       allowAdditions
                       search
                       rules={[{ required: true, message: t('请选择分组') }]}
-                      extraText={t('第一个选中的分组为主组')}
+                      extraText={t('第一个选中的分组为主组，渠道查找按此顺序进行')}
                     />
+                    <GroupsOrderSorter t={t} />
                   </Col>
                   <Col span={24}>
                     <Form.Input

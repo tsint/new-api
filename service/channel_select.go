@@ -56,8 +56,6 @@ func UserGroupListFromCtx(c *gin.Context) []string {
 }
 
 func tryGroupsInOrder(param *RetryParam, candidateGroups []string) (*model.Channel, string) {
-	var channel *model.Channel
-	selectGroup := ""
 	startGroupIndex := 0
 	crossGroupRetry := common.GetContextKeyBool(param.Ctx, constant.ContextKeyTokenCrossGroupRetry)
 	if lastGroupIndex, exists := common.GetContextKey(param.Ctx, constant.ContextKeyAutoGroupIndex); exists {
@@ -65,32 +63,43 @@ func tryGroupsInOrder(param *RetryParam, candidateGroups []string) (*model.Chann
 			startGroupIndex = idx
 		}
 	}
-	for i := startGroupIndex; i < len(candidateGroups); i++ {
-		group := candidateGroups[i]
-		priorityRetry := param.GetRetry()
-		if i > startGroupIndex {
-			priorityRetry = 0
-		}
-		logger.LogDebug(param.Ctx, "Selecting group in order: %s, priorityRetry: %d", group, priorityRetry)
-		channel, _ = model.GetRandomSatisfiedChannel(group, param.ModelName, priorityRetry, param.FormatGroup)
-		if channel == nil {
-			common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroupIndex, i+1)
-			common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroupRetryIndex, 0)
-			param.SetRetry(0)
-			continue
-		}
-		common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroup, group)
-		selectGroup = group
-		if crossGroupRetry && priorityRetry >= common.RetryTimes {
-			common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroupIndex, i+1)
-			param.SetRetry(0)
-			param.ResetRetryNextTry()
-		} else {
-			common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroupIndex, i)
-		}
-		break
+	if startGroupIndex >= len(candidateGroups) {
+		return nil, ""
 	}
-	return channel, selectGroup
+
+	// 批量选择：一次调用按顺序扫描所有候选组，避免逐组独立的锁/DB 往返
+	firstRetry := param.GetRetry()
+	remaining := candidateGroups[startGroupIndex:]
+	channel, hitGroup, _ := model.GetRandomSatisfiedChannelByGroups(remaining, param.ModelName, firstRetry, param.FormatGroup)
+	if channel == nil {
+		common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroupIndex, len(candidateGroups))
+		common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroupRetryIndex, 0)
+		param.SetRetry(0)
+		return nil, ""
+	}
+
+	hitIndex := startGroupIndex
+	for i, g := range remaining {
+		if g == hitGroup {
+			hitIndex = startGroupIndex + i
+			break
+		}
+	}
+	priorityRetry := 0
+	if hitIndex == startGroupIndex {
+		priorityRetry = firstRetry
+	}
+	logger.LogDebug(param.Ctx, "Selected group in order: %s (index %d), priorityRetry: %d", hitGroup, hitIndex, priorityRetry)
+	common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroup, hitGroup)
+	if crossGroupRetry && priorityRetry >= common.RetryTimes {
+		// 当前分组重试已用完，下次重试切到下一个分组
+		common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroupIndex, hitIndex+1)
+		param.SetRetry(0)
+		param.ResetRetryNextTry()
+	} else {
+		common.SetContextKey(param.Ctx, constant.ContextKeyAutoGroupIndex, hitIndex)
+	}
+	return channel, hitGroup
 }
 
 // MatchGroupForChannel 返回 groupList 中第一个对 (modelName, channelID) 可用的组
@@ -103,6 +112,20 @@ func MatchGroupForChannel(groupList []string, modelName string, channelID int) (
 	return "", false
 }
 
+// getAutoGroupsCached 每个请求上下文只计算一次 auto 候选组列表。
+// usable groups 的计算涉及全量 map copy 与 special settings 合并，
+// 重试场景下会被反复触发，缓存到 context 中避免重复计算。
+func getAutoGroupsCached(c *gin.Context) []string {
+	if v, ok := common.GetContextKey(c, constant.ContextKeyAutoGroupList); ok {
+		if list, ok2 := v.([]string); ok2 {
+			return list
+		}
+	}
+	list := GetUserAutoGroupByGroups(UserGroupListFromCtx(c))
+	common.SetContextKey(c, constant.ContextKeyAutoGroupList, list)
+	return list
+}
+
 func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, error) {
 	var channel *model.Channel
 	var err error
@@ -112,7 +135,7 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 		if len(setting.GetAutoGroups()) == 0 {
 			return nil, selectGroup, errors.New("auto groups is not enabled")
 		}
-		autoGroups := GetUserAutoGroupByGroups(UserGroupListFromCtx(param.Ctx))
+		autoGroups := getAutoGroupsCached(param.Ctx)
 		channel, hitGroup := tryGroupsInOrder(param, autoGroups)
 		if channel == nil {
 			return nil, selectGroup, nil

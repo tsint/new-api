@@ -9,9 +9,11 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/setting/ratio_setting"
+	"github.com/QuantumNous/new-api/types"
 
-	"github.com/glebarez/sqlite"
 	"github.com/gin-gonic/gin"
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -122,9 +124,9 @@ func TestMultiGroupAllExhaustedReturnsNil(t *testing.T) {
 
 func TestMultiGroupRetryResumesFromRecordedIndex(t *testing.T) {
 	setupChannelSelectEnv(t)
-	csSeedChannel(t, 1, "ga", false, 10)          // ga 无可用渠道
-	csSeedChannel(t, 2, "gb", true, 10)           // gb 高优先级
-	csSeedChannel(t, 3, "gb", true, 5)            // gb 低优先级
+	csSeedChannel(t, 1, "ga", false, 10) // ga 无可用渠道
+	csSeedChannel(t, 2, "gb", true, 10)  // gb 高优先级
+	csSeedChannel(t, 3, "gb", true, 5)   // gb 低优先级
 	c := newSelectCtx(t, []string{"ga", "gb"})
 	channel, selectGroup, err := CacheGetRandomSatisfiedChannel(multiGroupParam(c))
 	if err != nil || channel == nil {
@@ -169,5 +171,43 @@ func TestMatchGroupForChannel(t *testing.T) {
 	}
 	if _, ok := MatchGroupForChannel([]string{"ga", "gb"}, "other-model", 1); ok {
 		t.Error("model mismatch should not match")
+	}
+}
+
+func swapSpecialUsableGroups(t *testing.T, special map[string]map[string]string) {
+	t.Helper()
+	newMap := types.NewRWMap[string, map[string]string]()
+	newMap.AddAll(special)
+	ratio_setting.GetGroupRatioSetting().GroupSpecialUsableGroup = newMap
+}
+
+func TestGetAutoGroupsCached_ReusesWithinContext(t *testing.T) {
+	old := ratio_setting.GetGroupRatioSetting().GroupSpecialUsableGroup
+	restore := types.NewRWMap[string, map[string]string]()
+	restore.AddAll(old.ReadAll())
+	t.Cleanup(func() { ratio_setting.GetGroupRatioSetting().GroupSpecialUsableGroup = restore })
+
+	swapSpecialUsableGroups(t, nil)
+	c := newSelectCtx(t, []string{"ga"})
+
+	first := getAutoGroupsCached(c)
+	if len(first) != 1 || first[0] != "default" {
+		t.Fatalf("first = %v, want [default]", first)
+	}
+
+	// 设置变更后：同一 ctx 内重试应复用缓存（证明没有重复计算）
+	swapSpecialUsableGroups(t, map[string]map[string]string{
+		"ga": {"-:default": ""},
+	})
+	second := getAutoGroupsCached(c)
+	if len(second) != 1 || second[0] != "default" {
+		t.Errorf("second = %v, want cached [default]", second)
+	}
+
+	// 新的请求上下文必须重新计算
+	c2 := newSelectCtx(t, []string{"ga"})
+	third := getAutoGroupsCached(c2)
+	if len(third) != 0 {
+		t.Errorf("third = %v, want empty after recompute", third)
 	}
 }

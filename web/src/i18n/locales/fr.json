@@ -3644,6 +3644,8 @@
     "默认用户消息": "Bonjour",
     "默认补全倍率": "Taux de complétion par défaut",
     "请选择分组（可多选）": "Sélectionnez des groupes (choix multiple)",
-    "第一个选中的分组为主组": "Le premier groupe sélectionné est le groupe principal"
+    "第一个选中的分组为主组，渠道查找按此顺序进行": "Le premier groupe sélectionné est le groupe principal ; la recherche de canal suit cet ordre",
+    "拖拽标签调整查找顺序": "Glissez les étiquettes pour ajuster l'ordre de recherche",
+    "主组": "Principal"
   }
 }

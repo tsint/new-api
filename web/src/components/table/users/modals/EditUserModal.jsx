@@ -57,6 +57,7 @@ import {
   IconEdit,
 } from '@douyinfe/semi-icons';
 import UserBindingManagementModal from './UserBindingManagementModal';
+import { GroupsOrderSorter } from './SortableGroupTags';
 
 const { Text, Title } = Typography;
 
@@ -369,8 +370,9 @@ const EditUserModal = (props) => {
                           allowAdditions
                           search
                           rules={[{ required: true, message: t('请选择分组') }]}
-                          extraText={t('第一个选中的分组为主组')}
+                          extraText={t('第一个选中的分组为主组，渠道查找按此顺序进行')}
                         />
+                        <GroupsOrderSorter t={t} />
                       </Col>
 
                       <Col span={10}>

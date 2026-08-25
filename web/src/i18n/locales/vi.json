@@ -4178,6 +4178,8 @@
     "默认用户消息": "Xin chào",
     "默认补全倍率": "Tỷ lệ hoàn thành mặc định",
     "请选择分组（可多选）": "Chọn nhóm (có thể chọn nhiều)",
-    "第一个选中的分组为主组": "Nhóm được chọn đầu tiên là nhóm chính"
+    "第一个选中的分组为主组，渠道查找按此顺序进行": "Nhóm được chọn đầu tiên là nhóm chính; tra cứu kênh theo thứ tự này",
+    "拖拽标签调整查找顺序": "Kéo thẻ để điều chỉnh thứ tự tra cứu",
+    "主组": "Nhóm chính"
   }
 }

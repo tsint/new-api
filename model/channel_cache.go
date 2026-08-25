@@ -201,6 +201,12 @@ func GetRandomSatisfiedChannel(group string, model string, retry int, formatGrou
 	channelSyncLock.RLock()
 	defer channelSyncLock.RUnlock()
 
+	return getRandomSatisfiedChannelLocked(group, model, retry, formatGroup)
+}
+
+// getRandomSatisfiedChannelLocked 是 GetRandomSatisfiedChannel 的无锁内部版本，
+// 调用方必须持有 channelSyncLock。
+func getRandomSatisfiedChannelLocked(group string, model string, retry int, formatGroup common.APIFormatGroup) (*Channel, error) {
 	// Try format-matching channels first
 	if formatGroup != common.FormatGroupOther {
 		formatChannels := group2model2format2channels[group][model][formatGroup]
