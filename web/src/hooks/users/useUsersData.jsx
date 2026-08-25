@@ -20,8 +20,12 @@ For commercial licensing, please contact support@quantumnous.com
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { API, showError, showSuccess } from '../../helpers';
-import { ITEMS_PER_PAGE } from '../../constants';
 import { useTableCompactMode } from '../common/useTableCompactMode';
+import {
+  USERS_ITEMS_PER_PAGE,
+  buildUsersListUrl,
+  buildUsersSearchUrl,
+} from './useUsersData.utils';
 
 export const useUsersData = () => {
   const { t } = useTranslation();
@@ -31,10 +35,11 @@ export const useUsersData = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activePage, setActivePage] = useState(1);
-  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
+  const [pageSize, setPageSize] = useState(USERS_ITEMS_PER_PAGE);
   const [searching, setSearching] = useState(false);
   const [groupOptions, setGroupOptions] = useState([]);
   const [userCount, setUserCount] = useState(0);
+  const [showActiveOnly, setShowActiveOnly] = useState(true);
 
   // Modal states
   const [showAddUser, setShowAddUser] = useState(false);
@@ -70,9 +75,11 @@ export const useUsersData = () => {
   };
 
   // Load users data
-  const loadUsers = async (startIdx, pageSize) => {
+  const loadUsers = async (startIdx, pageSize, activeOnly = showActiveOnly) => {
     setLoading(true);
-    const res = await API.get(`/api/user/?p=${startIdx}&page_size=${pageSize}`);
+    const res = await API.get(
+      buildUsersListUrl(startIdx, pageSize, activeOnly),
+    );
     const { success, message, data } = res.data;
     if (success) {
       const newPageData = data.items;
@@ -91,6 +98,7 @@ export const useUsersData = () => {
     pageSize,
     searchKeyword = null,
     searchGroup = null,
+    activeOnly = showActiveOnly,
   ) => {
     // If no parameters passed, get values from form
     if (searchKeyword === null || searchGroup === null) {
@@ -101,12 +109,18 @@ export const useUsersData = () => {
 
     if (searchKeyword === '' && searchGroup === '') {
       // If keyword is blank, load files instead
-      await loadUsers(startIdx, pageSize);
+      await loadUsers(startIdx, pageSize, activeOnly);
       return;
     }
     setSearching(true);
     const res = await API.get(
-      `/api/user/search?keyword=${searchKeyword}&group=${searchGroup}&p=${startIdx}&page_size=${pageSize}`,
+      buildUsersSearchUrl(
+        startIdx,
+        pageSize,
+        searchKeyword,
+        searchGroup,
+        activeOnly,
+      ),
     );
     const { success, message, data } = res.data;
     if (success) {
@@ -264,6 +278,18 @@ export const useUsersData = () => {
     });
   };
 
+  // Handle active-only filter change
+  const handleActiveOnlyChange = (value) => {
+    setShowActiveOnly(value);
+    setActivePage(1);
+    const { searchKeyword, searchGroup } = getFormValues();
+    if (searchKeyword === '' && searchGroup === '') {
+      loadUsers(1, pageSize, value).then();
+    } else {
+      searchUsers(1, pageSize, searchKeyword, searchGroup, value).then();
+    }
+  };
+
   // Initialize data on component mount
   useEffect(() => {
     loadUsers(0, pageSize)
@@ -283,6 +309,7 @@ export const useUsersData = () => {
     userCount,
     searching,
     groupOptions,
+    showActiveOnly,
 
     // Modal state
     showAddUser,
@@ -314,6 +341,7 @@ export const useUsersData = () => {
     closeAddUser,
     closeEditUser,
     getFormValues,
+    handleActiveOnlyChange,
 
     // Translation
     t,

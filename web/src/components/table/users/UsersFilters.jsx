@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 import React, { useRef } from 'react';
-import { Form, Button } from '@douyinfe/semi-ui';
+import { Form, Button, Switch } from '@douyinfe/semi-ui';
 import { IconSearch } from '@douyinfe/semi-icons';
 
 const UsersFilters = ({
@@ -31,6 +31,8 @@ const UsersFilters = ({
   groupOptions,
   loading,
   searching,
+  showActiveOnly,
+  handleActiveOnlyChange,
   t,
 }) => {
   const formApiRef = useRef(null);
@@ -87,6 +89,16 @@ const UsersFilters = ({
             pure
             size='small'
           />
+        </div>
+        <div className='flex items-center gap-2 w-full md:w-auto'>
+          <Switch
+            checked={showActiveOnly}
+            onChange={(checked) => handleActiveOnlyChange(checked)}
+            aria-label={t('仅显示已启用用户')}
+          />
+          <span className='text-sm whitespace-nowrap'>
+            {t('仅显示已启用用户')}
+          </span>
         </div>
         <div className='flex gap-2 w-full md:w-auto'>
           <Button

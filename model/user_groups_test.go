@@ -4,8 +4,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/glebarez/sqlite"
 	"github.com/QuantumNous/new-api/common"
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -164,7 +164,7 @@ func TestSearchUsersMatchesAnyBoundGroup(t *testing.T) {
 	DB.Create(&User{Username: "u4", Password: "12345678", Group: "gc", AffCode: "a4"})
 	DB.Create(&User{Username: "u5", Password: "12345678", Group: "ga", AffCode: "a5"})
 
-	users, total, err := SearchUsers("", "gb", 0, 10)
+	users, total, err := SearchUsers("", "gb", 0, 10, "")
 	if err != nil {
 		t.Fatalf("search: %v", err)
 	}
@@ -172,7 +172,7 @@ func TestSearchUsersMatchesAnyBoundGroup(t *testing.T) {
 		t.Errorf("search gb got total=%d users=%v", total, usernames(users))
 	}
 
-	users, total, err = SearchUsers("", "ga", 0, 10)
+	users, total, err = SearchUsers("", "ga", 0, 10, "")
 	if err != nil {
 		t.Fatalf("search: %v", err)
 	}
