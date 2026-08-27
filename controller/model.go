@@ -219,6 +219,15 @@ func ListModels(c *gin.Context, modelType int) {
 				Type:        "model",
 			}
 		}
+		if len(useranthropicModels) == 0 {
+			c.JSON(200, gin.H{
+				"data":     []dto.AnthropicModel{},
+				"first_id": nil,
+				"has_more": false,
+				"last_id":  nil,
+			})
+			return
+		}
 		c.JSON(200, gin.H{
 			"data":     useranthropicModels,
 			"first_id": useranthropicModels[0].ID,

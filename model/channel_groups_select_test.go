@@ -168,12 +168,12 @@ func setupGroupsSelectDB(t *testing.T) *int {
 	DB = db
 	common.MemoryCacheEnabled = false
 	common.UsingSQLite = true
-	initCol()
+	InitCol()
 	t.Cleanup(func() {
 		DB = oldDB
 		common.MemoryCacheEnabled = oldMem
 		common.UsingSQLite = oldUsingSQLite
-		initCol()
+		InitCol()
 	})
 	return &queryCount
 }

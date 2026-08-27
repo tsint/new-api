@@ -25,7 +25,10 @@ var commonFalseVal string
 var logKeyCol string
 var logGroupCol string
 
-func initCol() {
+// InitCol initializes DB-dialect specific column quoting vars.
+// Exported so cross-package tests that bypass InitDB can set up
+// reserved-word column quoting (group/key) before querying abilities.
+func InitCol() {
 	// init common column names
 	if common.UsingPostgreSQL {
 		commonGroupCol = `"group"`
@@ -117,7 +120,7 @@ func CheckSetup() {
 
 func chooseDB(envName string, isLog bool) (*gorm.DB, error) {
 	defer func() {
-		initCol()
+		InitCol()
 	}()
 	dsn := os.Getenv(envName)
 	if dsn != "" {

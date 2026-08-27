@@ -94,11 +94,11 @@ func setupUserGroupsTestDB(t *testing.T) {
 	}
 	DB = db
 	common.UsingSQLite = true
-	initCol()
+	InitCol()
 	t.Cleanup(func() {
 		DB = oldDB
 		common.UsingSQLite = oldUsingSQLite
-		initCol()
+		InitCol()
 	})
 }
 
