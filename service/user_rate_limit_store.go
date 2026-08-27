@@ -21,8 +21,9 @@ type UserRateLimitStore interface {
 	IncSecondRate(key string, now time.Time) (int64, error)
 }
 
-const userConcKeyPrefix = "ugrl:conc:"
-const userRateKeyPrefix = "ugrl:rate:"
+// 通用限流计数键前缀：用户组限流与渠道并发限制共用同一存储抽象
+const userConcKeyPrefix = "ratelimit:conc:"
+const userRateKeyPrefix = "ratelimit:rate:"
 
 func NewUserRateLimitStore(rdb *redis.Client) UserRateLimitStore {
 	if rdb != nil {

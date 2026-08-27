@@ -41,6 +41,7 @@ type Channel struct {
 	//MaxInputTokens     *int    `json:"max_input_tokens" gorm:"default:0"`
 	StatusCodeMapping *string `json:"status_code_mapping" gorm:"type:varchar(1024);default:''"`
 	Priority          *int64  `json:"priority" gorm:"bigint;default:0"`
+	ConcurrentTaskLimit *int64 `json:"concurrent_task_limit" gorm:"bigint;default:0"` // 渠道并发任务数上限，0=不限
 	AutoBan           *int    `json:"auto_ban" gorm:"default:1"`
 	OtherInfo         string  `json:"other_info"`
 	Tag               *string `json:"tag" gorm:"index"`
@@ -412,6 +413,14 @@ func (channel *Channel) GetPriority() int64 {
 		return 0
 	}
 	return *channel.Priority
+}
+
+// GetConcurrentTaskLimit 渠道并发任务数上限；nil/<=0 表示不限制（返回 0）。
+func (channel *Channel) GetConcurrentTaskLimit() int64 {
+	if channel.ConcurrentTaskLimit == nil || *channel.ConcurrentTaskLimit <= 0 {
+		return 0
+	}
+	return *channel.ConcurrentTaskLimit
 }
 
 func (channel *Channel) GetWeight() int {

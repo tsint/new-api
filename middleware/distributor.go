@@ -185,6 +185,17 @@ func Distribute() func(c *gin.Context) {
 			if CheckChannelModelQuotaForChannel(c, channel.Id, rawQuotaSettings, modelRequest.Model) {
 				return
 			}
+			// 渠道并发任务数上限：满载即拒（429），同样位于 relay 进入之前，
+			// 结构上保证不会发生渠道转移重试；名额占用覆盖流式/WS 全程
+			if concLimit := channel.GetConcurrentTaskLimit(); concLimit > 0 {
+				ok, release := handleChannelConcurrency(c, getCCStore(), channel.Id, concLimit)
+				if !ok {
+					return
+				}
+				if release != nil {
+					defer release()
+				}
+			}
 		}
 		c.Next()
 		if channel != nil && c.Writer != nil && c.Writer.Status() < http.StatusBadRequest {
