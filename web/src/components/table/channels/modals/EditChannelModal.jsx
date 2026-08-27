@@ -180,6 +180,8 @@ const EditChannelModal = (props) => {
     model_mapping: '',
     param_override: '',
     status_code_mapping: '',
+    header_override: '',
+    model_quota_settings: '',
     models: [],
     auto_ban: 1,
     test_model: '',
@@ -1013,6 +1015,7 @@ const EditChannelModal = (props) => {
         (data.param_override && data.param_override.trim()) ||
         (data.status_code_mapping && data.status_code_mapping.trim()) ||
         (data.header_override && data.header_override.trim()) ||
+        (data.model_quota_settings && data.model_quota_settings.trim()) ||
         (data.tag && data.tag.trim()) ||
         (data.remark && data.remark.trim()) ||
         (data.priority && data.priority !== 0) ||
@@ -1531,6 +1534,7 @@ const EditChannelModal = (props) => {
     const formValues = formApiRef.current ? formApiRef.current.getValues() : {};
     let localInputs = { ...formValues };
     localInputs.param_override = inputs.param_override;
+    localInputs.model_quota_settings = inputs.model_quota_settings ?? '';
 
     if (localInputs.type === 57) {
       if (batch) {
@@ -2405,6 +2409,38 @@ const EditChannelModal = (props) => {
                             </div>
                           </div>
                         </div>
+                      </div>
+                    }
+                    showClear
+                  />
+                  <Form.TextArea
+                    field='model_quota_settings'
+                    label={t('模型时段限额配置（每4小时，按组）')}
+                    placeholder={
+                      t('此项可选，用于配置按组、按模型的每4小时token限额') +
+                      '\n' +
+                      '{"default": {"gpt-4o": 5000000}, "svip": {"*": -1}}'
+                    }
+                    autosize
+                    onChange={(value) =>
+                      handleInputChange('model_quota_settings', value)
+                    }
+                    rules={[
+                      {
+                        validator: (rule, value) =>
+                          !value || String(value).trim() === ''
+                            ? true
+                            : verifyJSON(value),
+                        message: t('不是合法的 JSON 字符串'),
+                      },
+                    ]}
+                    extraText={
+                      <div className='flex flex-col gap-1'>
+                        <Text type='tertiary' size='small'>
+                          {t(
+                            '组→模型→每4小时token上限；"*" 为该组通配兜底；值≤0表示不限制；按自然UTC时间0/4/8/12/16/20点分块',
+                          )}
+                        </Text>
                       </div>
                     }
                     showClear

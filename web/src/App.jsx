@@ -41,6 +41,7 @@ import Chat2Link from './pages/Chat2Link';
 import Midjourney from './pages/Midjourney';
 import Pricing from './pages/Pricing';
 import Task from './pages/Task';
+import ModelQuota from './pages/ModelQuota';
 import ModelPage from './pages/Model';
 import ModelDeploymentPage from './pages/ModelDeployment';
 import Playground from './pages/Playground';
@@ -144,6 +145,14 @@ function App() {
           element={
             <PrivateRoute>
               <Token />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path='/console/model_quota'
+          element={
+            <PrivateRoute>
+              <ModelQuota />
             </PrivateRoute>
           }
         />

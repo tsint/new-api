@@ -275,6 +275,27 @@ const isRequestPassThroughEnabled = (record) => {
   }
 };
 
+const hasModelQuotaSettings = (record) => {
+  if (!record || record.children !== undefined) {
+    return false;
+  }
+  const value = record.model_quota_settings;
+  if (typeof value !== 'string' || value.trim() === '') {
+    return false;
+  }
+  try {
+    const parsed = JSON.parse(value);
+    return (
+      parsed &&
+      typeof parsed === 'object' &&
+      !Array.isArray(parsed) &&
+      Object.keys(parsed).length >= 1
+    );
+  } catch (error) {
+    return false;
+  }
+};
+
 const getUpstreamUpdateMeta = (record) => {
   const supported =
     !!record &&
@@ -340,6 +361,7 @@ export const getChannelsColumns = ({
       dataIndex: 'name',
       render: (text, record, index) => {
         const passThroughEnabled = isRequestPassThroughEnabled(record);
+        const modelQuotaEnabled = hasModelQuotaSettings(record);
         const upstreamUpdateMeta = getUpstreamUpdateMeta(record);
         const pendingAddCount = upstreamUpdateMeta.pendingAddModels.length;
         const pendingRemoveCount =
@@ -383,7 +405,11 @@ export const getChannelsColumns = ({
             <span>{text}</span>
           );
 
-        if (!passThroughEnabled && !showUpstreamUpdateTag) {
+        if (
+          !passThroughEnabled &&
+          !modelQuotaEnabled &&
+          !showUpstreamUpdateTag
+        ) {
           return nameNode;
         }
 
@@ -402,6 +428,19 @@ export const getChannelsColumns = ({
                   <IconAlertTriangle
                     style={{ color: 'var(--semi-color-warning)' }}
                   />
+                </span>
+              </Tooltip>
+            )}
+            {modelQuotaEnabled && (
+              <Tooltip
+                content={t('该渠道已配置模型时段限额（每4小时，按组）')}
+                trigger='hover'
+                position='topLeft'
+              >
+                <span className='inline-flex items-center'>
+                  <Tag color='orange' type='light' size='small' shape='circle'>
+                    {t('限额')}
+                  </Tag>
                 </span>
               </Tooltip>
             )}

@@ -49,6 +49,7 @@ export default function SettingsSidebarModulesAdmin(props) {
       enabled: true,
       detail: true,
       token: true,
+      model_quota: true,
       log: true,
       midjourney: true,
       task: true,
@@ -110,6 +111,7 @@ export default function SettingsSidebarModulesAdmin(props) {
         enabled: true,
         detail: true,
         token: true,
+        model_quota: true,
         log: true,
         midjourney: true,
         task: true,
@@ -183,6 +185,7 @@ export default function SettingsSidebarModulesAdmin(props) {
             enabled: true,
             detail: true,
             token: true,
+            model_quota: true,
             log: true,
             midjourney: true,
             task: true,
@@ -226,6 +229,11 @@ export default function SettingsSidebarModulesAdmin(props) {
       modules: [
         { key: 'detail', title: t('数据看板'), description: t('系统数据统计') },
         { key: 'token', title: t('令牌管理'), description: t('API令牌管理') },
+        {
+          key: 'model_quota',
+          title: t('模型额度'),
+          description: t('模型时段限额用量展示'),
+        },
         { key: 'log', title: t('使用日志'), description: t('API使用记录') },
         {
           key: 'midjourney',

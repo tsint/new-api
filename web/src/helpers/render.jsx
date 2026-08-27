@@ -75,6 +75,7 @@ import {
   Package,
   Server,
   CalendarClock,
+  PieChart,
 } from 'lucide-react';
 import {
   SiAtlassian,
@@ -124,6 +125,8 @@ export function getLucideIcon(key, selected = false) {
       return <MessageSquare {...commonProps} color={iconColor} />;
     case 'token':
       return <Key {...commonProps} color={iconColor} />;
+    case 'model_quota':
+      return <PieChart {...commonProps} color={iconColor} />;
     case 'log':
       return <BarChart3 {...commonProps} color={iconColor} />;
     case 'midjourney':

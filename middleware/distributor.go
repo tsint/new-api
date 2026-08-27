@@ -176,6 +176,16 @@ func Distribute() func(c *gin.Context) {
 		}
 		common.SetContextKey(c, constant.ContextKeyRequestStartTime, time.Now())
 		SetupContextForSelectedChannel(c, channel, modelRequest.Model)
+		if channel != nil {
+			rawQuotaSettings := ""
+			if channel.ModelQuotaSettings != nil {
+				rawQuotaSettings = *channel.ModelQuotaSettings
+			}
+			// 时段限额命中时直接拒绝，且不进入 relay 重试链（无渠道转移）
+			if CheckChannelModelQuotaForChannel(c, channel.Id, rawQuotaSettings, modelRequest.Model) {
+				return
+			}
+		}
 		c.Next()
 		if channel != nil && c.Writer != nil && c.Writer.Status() < http.StatusBadRequest {
 			service.RecordChannelAffinity(c, channel.Id)

@@ -23,6 +23,7 @@ import { Card, Spin } from '@douyinfe/semi-ui';
 import { API, showError, toBoolean } from '../../helpers';
 import { useTranslation } from 'react-i18next';
 import RequestRateLimit from '../../pages/Setting/RateLimit/SettingsRequestRateLimit';
+import UserGroupRateLimit from '../../pages/Setting/RateLimit/SettingsUserGroupRateLimit';
 
 const RateLimitSetting = () => {
   const { t } = useTranslation();
@@ -32,6 +33,7 @@ const RateLimitSetting = () => {
     ModelRequestRateLimitSuccessCount: 1000,
     ModelRequestRateLimitDurationMinutes: 1,
     ModelRequestRateLimitGroup: '',
+    UserGroupRateLimitSettings: '{}',
   });
 
   let [loading, setLoading] = useState(false);
@@ -42,7 +44,10 @@ const RateLimitSetting = () => {
     if (success) {
       let newInputs = {};
       data.forEach((item) => {
-        if (item.key === 'ModelRequestRateLimitGroup') {
+        if (
+          item.key === 'ModelRequestRateLimitGroup' ||
+          item.key === 'UserGroupRateLimitSettings'
+        ) {
           item.value = JSON.stringify(JSON.parse(item.value), null, 2);
         }
 
@@ -80,6 +85,10 @@ const RateLimitSetting = () => {
         {/* AI请求速率限制 */}
         <Card style={{ marginTop: '10px' }}>
           <RequestRateLimit options={inputs} refresh={onRefresh} />
+        </Card>
+        {/* 用户组并发与连接速率限制 */}
+        <Card style={{ marginTop: '10px' }}>
+          <UserGroupRateLimit options={inputs} refresh={onRefresh} />
         </Card>
       </Spin>
     </>
