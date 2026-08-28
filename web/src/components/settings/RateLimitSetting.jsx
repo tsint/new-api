@@ -24,6 +24,7 @@ import { API, showError, toBoolean } from '../../helpers';
 import { useTranslation } from 'react-i18next';
 import RequestRateLimit from '../../pages/Setting/RateLimit/SettingsRequestRateLimit';
 import UserGroupRateLimit from '../../pages/Setting/RateLimit/SettingsUserGroupRateLimit';
+import NonStreamRateLimit from '../../pages/Setting/RateLimit/SettingsNonStreamRateLimit';
 
 const RateLimitSetting = () => {
   const { t } = useTranslation();
@@ -34,6 +35,9 @@ const RateLimitSetting = () => {
     ModelRequestRateLimitDurationMinutes: 1,
     ModelRequestRateLimitGroup: '',
     UserGroupRateLimitSettings: '{}',
+    NonStreamRequestRateLimitEnabled: false,
+    NonStreamRequestRateLimitCount: 0,
+    NonStreamRequestRateLimitGroup: '',
   });
 
   let [loading, setLoading] = useState(false);
@@ -46,7 +50,8 @@ const RateLimitSetting = () => {
       data.forEach((item) => {
         if (
           item.key === 'ModelRequestRateLimitGroup' ||
-          item.key === 'UserGroupRateLimitSettings'
+          item.key === 'UserGroupRateLimitSettings' ||
+          item.key === 'NonStreamRequestRateLimitGroup'
         ) {
           item.value = JSON.stringify(JSON.parse(item.value), null, 2);
         }
@@ -89,6 +94,10 @@ const RateLimitSetting = () => {
         {/* 用户组并发与连接速率限制 */}
         <Card style={{ marginTop: '10px' }}>
           <UserGroupRateLimit options={inputs} refresh={onRefresh} />
+        </Card>
+        {/* 非流请求限速 */}
+        <Card style={{ marginTop: '10px' }}>
+          <NonStreamRateLimit options={inputs} refresh={onRefresh} />
         </Card>
       </Spin>
     </>

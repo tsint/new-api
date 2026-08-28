@@ -31,6 +31,9 @@ func (f *fakeErrStore) GetConcurrency(string) int64        { return 0 }
 func (f *fakeErrStore) IncSecondRate(string, time.Time) (int64, error) {
 	return 0, errInjectedStoreFailure
 }
+func (f *fakeErrStore) IncMinuteRate(string, time.Time) (int64, error) {
+	return 0, errInjectedStoreFailure
+}
 
 func TestTryAcquireChannelConcurrency_Unlimited(t *testing.T) {
 	store := service.NewUserRateLimitStore(nil)

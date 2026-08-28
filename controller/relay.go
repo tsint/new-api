@@ -122,6 +122,11 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		return
 	}
 
+	if nsErr := middleware.CheckNonStreamRateLimitForRelay(c, relayFormat, relayInfo.IsStream); nsErr != nil {
+		newAPIError = nsErr
+		return
+	}
+
 	needSensitiveCheck := setting.ShouldCheckPromptSensitive()
 	needCountToken := constant.CountToken
 	// Avoid building huge CombineText (strings.Join) when token counting and sensitive check are both disabled.
@@ -192,6 +197,11 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		if channelErr != nil {
 			logger.LogError(c, channelErr.Error())
 			newAPIError = channelErr
+			break
+		}
+
+		if nsErr := middleware.CheckChannelNonStreamSupport(c, relayFormat, relayInfo.IsStream); nsErr != nil {
+			newAPIError = nsErr
 			break
 		}
 

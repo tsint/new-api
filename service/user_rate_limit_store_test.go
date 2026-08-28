@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sync"
 	"testing"
 	"time"
 )
@@ -67,5 +68,70 @@ func TestMemUserRateLimitStoreSecondWindow(t *testing.T) {
 	// key 相互独立
 	if got, _ := s.IncSecondRate("u2", base.Add(1200*time.Millisecond)); got != 1 {
 		t.Fatalf("independent key = %d, want 1", got)
+	}
+}
+
+func TestMemUserRateLimitStoreMinuteWindow(t *testing.T) {
+	s := NewUserRateLimitStore(nil)
+	// 1700000000 % 60 = 20，窗口 [1699999980, 1700000040)
+	base := time.Unix(1700000000, 0)
+
+	cases := []struct {
+		at   time.Time
+		want int64
+	}{
+		{base, 1},
+		{base.Add(30 * time.Second), 2},  // 同一分钟窗口
+		{base.Add(39 * time.Second), 3},  // 同一分钟窗口
+		{base.Add(40 * time.Second), 1},  // 下一自然分钟全新窗口
+		{base.Add(70 * time.Second), 2},  // 仍在第二分钟窗口
+	}
+	for _, tc := range cases {
+		got, err := s.IncMinuteRate("u1", tc.at)
+		if err != nil {
+			t.Fatalf("inc at %v error: %v", tc.at, err)
+		}
+		if got != tc.want {
+			t.Fatalf("inc at %v = %d, want %d", tc.at.Format(time.RFC3339), got, tc.want)
+		}
+	}
+
+	// key 相互独立
+	if got, _ := s.IncMinuteRate("u2", base.Add(50*time.Second)); got != 1 {
+		t.Fatalf("independent key = %d, want 1", got)
+	}
+}
+
+func TestMemUserRateLimitStoreMinuteWindow_ConcurrentExactBound(t *testing.T) {
+	s := NewUserRateLimitStore(nil)
+	const total = 40
+	now := time.Unix(1700000000, 0)
+
+	var wg sync.WaitGroup
+	returns := make([]int64, total)
+	for i := 0; i < total; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			v, err := s.IncMinuteRate("u1", now)
+			if err != nil {
+				t.Errorf("inc error: %v", err)
+				return
+			}
+			returns[idx] = v
+		}(i)
+	}
+	wg.Wait()
+
+	// 每次调用必须看到唯一且连续的计数值：Σ(1..40) = 820
+	var sum int64
+	for _, v := range returns {
+		if v < 1 || v > total {
+			t.Fatalf("returned value out of range: %d", v)
+		}
+		sum += v
+	}
+	if want := int64(total * (total + 1) / 2); sum != want {
+		t.Fatalf("returned sum = %d, want %d (values must be unique and sequential)", sum, want)
 	}
 }

@@ -141,6 +141,9 @@ func InitOptionMap() {
 	common.OptionMap["ModelRequestRateLimitDurationMinutes"] = strconv.Itoa(setting.ModelRequestRateLimitDurationMinutes)
 	common.OptionMap["ModelRequestRateLimitSuccessCount"] = strconv.Itoa(setting.ModelRequestRateLimitSuccessCount)
 	common.OptionMap["ModelRequestRateLimitGroup"] = setting.ModelRequestRateLimitGroup2JSONString()
+	common.OptionMap["NonStreamRequestRateLimitEnabled"] = strconv.FormatBool(setting.NonStreamRequestRateLimitEnabled)
+	common.OptionMap["NonStreamRequestRateLimitCount"] = strconv.Itoa(setting.NonStreamRequestRateLimitCount)
+	common.OptionMap["NonStreamRequestRateLimitGroup"] = setting.NonStreamRateLimitGroup2JSONString()
 	common.OptionMap["UserGroupRateLimitSettings"] = "{}"
 	common.OptionMap["ModelRatio"] = ratio_setting.ModelRatio2JSONString()
 	common.OptionMap["ModelPrice"] = ratio_setting.ModelPrice2JSONString()
@@ -320,6 +323,8 @@ func updateOptionMap(key string, value string) (err error) {
 			setting.CheckSensitiveOnPromptEnabled = boolValue
 		case "ModelRequestRateLimitEnabled":
 			setting.ModelRequestRateLimitEnabled = boolValue
+		case "NonStreamRequestRateLimitEnabled":
+			setting.NonStreamRequestRateLimitEnabled = boolValue
 		case "StopOnSensitiveEnabled":
 			setting.StopOnSensitiveEnabled = boolValue
 		case "SMTPSSLEnabled":
@@ -496,6 +501,10 @@ func updateOptionMap(key string, value string) (err error) {
 		setting.ModelRequestRateLimitSuccessCount, _ = strconv.Atoi(value)
 	case "ModelRequestRateLimitGroup":
 		err = setting.UpdateModelRequestRateLimitGroupByJSONString(value)
+	case "NonStreamRequestRateLimitCount":
+		setting.NonStreamRequestRateLimitCount, _ = strconv.Atoi(value)
+	case "NonStreamRequestRateLimitGroup":
+		err = setting.UpdateNonStreamRateLimitGroupByJSONString(value)
 	case "UserGroupRateLimitSettings":
 		err = setting.UpdateUserGroupRateLimitSettingsByJSONString(value)
 	case "RetryTimes":

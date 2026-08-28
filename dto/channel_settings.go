@@ -7,6 +7,7 @@ type ChannelSettings struct {
 	PassThroughBodyEnabled bool   `json:"pass_through_body_enabled,omitempty"`
 	SystemPrompt           string `json:"system_prompt,omitempty"`
 	SystemPromptOverride   bool   `json:"system_prompt_override,omitempty"`
+	DisableNonStreaming    bool   `json:"disable_non_streaming,omitempty"` // 渠道只接收流式请求，非流请求直接 403
 }
 
 type VertexKeyType string

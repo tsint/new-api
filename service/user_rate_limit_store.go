@@ -10,7 +10,7 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
-// UserRateLimitStore 用户级限流计数：并发占用 + 自然秒窗口计数。
+// UserRateLimitStore 用户级限流计数：并发占用 + 自然秒窗口计数 + 自然分钟窗口计数。
 // Redis 可用时为多节点全局精确；否则进程内存近似（单节点准确，多节点为节点本地）。
 type UserRateLimitStore interface {
 	// AcquireConcurrency 并发数 +1，返回累加后的值
@@ -19,11 +19,14 @@ type UserRateLimitStore interface {
 	GetConcurrency(key string) int64
 	// IncSecondRate 在 now 所在自然秒的窗口内 +1，返回窗口内累计值
 	IncSecondRate(key string, now time.Time) (int64, error)
+	// IncMinuteRate 在 now 所在自然分钟的窗口内 +1，返回窗口内累计值
+	IncMinuteRate(key string, now time.Time) (int64, error)
 }
 
-// 通用限流计数键前缀：用户组限流与渠道并发限制共用同一存储抽象
+// 通用限流计数键前缀：用户组限流、渠道并发限制与非流限速共用同一存储抽象
 const userConcKeyPrefix = "ratelimit:conc:"
 const userRateKeyPrefix = "ratelimit:rate:"
+const userMinRateKeyPrefix = "ratelimit:minrate:"
 
 func NewUserRateLimitStore(rdb *redis.Client) UserRateLimitStore {
 	if rdb != nil {
@@ -39,12 +42,15 @@ type memUserRateLimitStore struct {
 	conc    map[string]int64
 	rateCur map[string]int64
 	curSec  int64
+	minCur  map[string]int64
+	curMin  int64
 }
 
 func newMemUserRateLimitStore() *memUserRateLimitStore {
 	return &memUserRateLimitStore{
 		conc:    make(map[string]int64),
 		rateCur: make(map[string]int64),
+		minCur:  make(map[string]int64),
 	}
 }
 
@@ -82,6 +88,18 @@ func (m *memUserRateLimitStore) IncSecondRate(key string, now time.Time) (int64,
 	}
 	m.rateCur[key]++
 	return m.rateCur[key], nil
+}
+
+func (m *memUserRateLimitStore) IncMinuteRate(key string, now time.Time) (int64, error) {
+	minute := now.Unix() / 60
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if minute != m.curMin {
+		m.minCur = make(map[string]int64)
+		m.curMin = minute
+	}
+	m.minCur[key]++
+	return m.minCur[key], nil
 }
 
 // ---------------- redis ----------------
@@ -126,5 +144,17 @@ func (r *redisUserRateLimitStore) IncSecondRate(key string, now time.Time) (int6
 		return 0, err
 	}
 	r.rdb.ExpireNX(ctx, k, 2*time.Second)
+	return v, nil
+}
+
+func (r *redisUserRateLimitStore) IncMinuteRate(key string, now time.Time) (int64, error) {
+	ctx := context.Background()
+	k := fmt.Sprintf("%s%s:%d", userMinRateKeyPrefix, key, now.Unix()/60)
+	v, err := r.rdb.Incr(ctx, k).Result()
+	if err != nil {
+		return 0, err
+	}
+	// 两个窗口时长的兜底过期，防节点崩溃后计数泄漏
+	r.rdb.ExpireNX(ctx, k, 2*time.Minute)
 	return v, nil
 }

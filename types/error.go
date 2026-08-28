@@ -51,6 +51,10 @@ const (
 	ErrorCodeGetChannelFailed   ErrorCode = "get_channel_failed"
 	ErrorCodeGenRelayInfoFailed ErrorCode = "gen_relay_info_failed"
 
+	// non-stream control（无 channel: 前缀：shouldRetry 对 channel: 前缀无条件重试，与纯拒绝语义冲突）
+	ErrorCodeNonStreamingDisabled     ErrorCode = "non_streaming_disabled"
+	ErrorCodeNonStreamRateLimitExceed ErrorCode = "non_stream_rate_limit_exceeded"
+
 	// channel error
 	ErrorCodeChannelNoAvailableKey        ErrorCode = "channel:no_available_key"
 	ErrorCodeChannelParamOverrideInvalid  ErrorCode = "channel:param_override_invalid"

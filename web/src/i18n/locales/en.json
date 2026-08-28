@@ -3802,6 +3802,19 @@
     "默认折叠侧边栏": "Default collapse sidebar",
     "默认测试模型": "Default Test Model",
     "默认用户消息": "Default User Message",
-    "默认补全倍率": "Default completion ratio"
+    "默认补全倍率": "Default completion ratio",
+    "禁用非流式请求": "Disable non-streaming requests",
+    "开启后该渠道只接收流式请求，非流请求将返回403（用于避免上游因频繁新建连接触发限流/风控）": "When enabled, this channel only accepts streaming requests; non-streaming requests will get 403 (prevents frequent new connections from triggering upstream rate limits / risk control)",
+    "非流请求限速": "Non-streaming request rate limit",
+    "启用非流请求每分钟限速": "Enable per-minute non-streaming request rate limit",
+    "用户每分钟最多非流请求次数": "Max non-streaming requests per user per minute",
+    "按请求进入时计数（无论成败），流式请求不受限，0代表不限制": "Counted at request entry (regardless of outcome); streaming requests are exempt; 0 means unlimited",
+    "分组非流请求限速": "Group non-streaming rate limit",
+    "{\n  \"default\": 100,\n  \"vip\": 0\n}": "{\n  \"default\": 100,\n  \"vip\": 0\n}",
+    "使用 JSON 对象格式，格式为：{\"组名\": 每分钟最多非流请求次数}": "Use a JSON object: {\"group\": max non-streaming requests per minute}",
+    "示例：{\"default\": 100, \"vip\": 0}，值为 0 表示该组不限制。": "Example: {\"default\": 100, \"vip\": 0}. A value of 0 means no limit for that group.",
+    "分组配置优先级高于全局非流请求限速。": "Group settings take priority over the global non-streaming rate limit.",
+    "固定自然分钟窗口计数，非流请求在入口处计数。": "Fixed natural-minute window counting; non-streaming requests are counted at entry.",
+    "保存非流请求限速": "Save non-streaming rate limit"
   }
 }
