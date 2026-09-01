@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/setting"
 )
 
 const (
@@ -107,6 +108,7 @@ func refreshCodexOAuthToken(
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
+	setting.ApplySystemRequestHeaders(req.Header)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -169,6 +171,7 @@ func exchangeCodexAuthorizationCode(
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Accept", "application/json")
+	setting.ApplySystemRequestHeaders(req.Header)
 
 	resp, err := client.Do(req)
 	if err != nil {

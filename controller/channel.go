@@ -17,6 +17,7 @@ import (
 	"github.com/QuantumNous/new-api/relay/channel/gemini"
 	"github.com/QuantumNous/new-api/relay/channel/ollama"
 	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/setting"
 
 	"github.com/gin-gonic/gin"
 )
@@ -1046,6 +1047,7 @@ func FetchModels(c *gin.Context) {
 	}
 
 	request.Header.Set("Authorization", "Bearer "+key)
+	setting.ApplySystemRequestHeaders(request.Header)
 
 	response, err := client.Do(request)
 	if err != nil {

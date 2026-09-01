@@ -27,6 +27,7 @@ import SettingsLog from '../../pages/Setting/Operation/SettingsLog';
 import SettingsMonitoring from '../../pages/Setting/Operation/SettingsMonitoring';
 import SettingsCreditLimit from '../../pages/Setting/Operation/SettingsCreditLimit';
 import SettingsCheckin from '../../pages/Setting/Operation/SettingsCheckin';
+import SettingsSystemRequestHeaders from '../../pages/Setting/Operation/SettingsSystemRequestHeaders';
 import { API, showError, toBoolean } from '../../helpers';
 
 const OperationSetting = () => {
@@ -82,6 +83,9 @@ const OperationSetting = () => {
 
     /* 令牌设置 */
     'token_setting.max_user_tokens': 1000,
+
+    /* 系统请求自定义请求头 */
+    SystemRequestHeaders: '',
   });
 
   let [loading, setLoading] = useState(false);
@@ -146,6 +150,10 @@ const OperationSetting = () => {
         {/* 监控设置 */}
         <Card style={{ marginTop: '10px' }}>
           <SettingsMonitoring options={inputs} refresh={onRefresh} />
+        </Card>
+        {/* 系统请求自定义请求头 */}
+        <Card style={{ marginTop: '10px' }}>
+          <SettingsSystemRequestHeaders options={inputs} refresh={onRefresh} />
         </Card>
         {/* 额度设置 */}
         <Card style={{ marginTop: '10px' }}>

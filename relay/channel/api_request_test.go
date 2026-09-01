@@ -12,6 +12,7 @@ import (
 	"github.com/QuantumNous/new-api/dto"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/types"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
@@ -428,4 +429,58 @@ func TestDoApiRequest_ClientAuthorizationNeverLeaksUpstream(t *testing.T) {
 
 	require.Equal(t, "Bearer channel-key", upstreamHeaders.Get("Authorization"))
 	require.Empty(t, upstreamHeaders.Get("Cookie"))
+}
+
+func setSystemRequestHeadersForTest(t *testing.T, jsonStr string) {
+	t.Helper()
+	require.NoError(t, setting.UpdateSystemRequestHeadersByJSONString(jsonStr))
+	t.Cleanup(func() {
+		require.NoError(t, setting.UpdateSystemRequestHeadersByJSONString(""))
+	})
+}
+
+// F6: 渠道测试（IsChannelTest=true）时全局系统请求头以 set-if-absent 语义注入
+func TestDoApiRequest_SystemRequestHeadersAppliedForChannelTest(t *testing.T) {
+	setSystemRequestHeadersForTest(t, `{"X-System-Flag":"f6","User-Agent":"new-api-system/1.0","Authorization":"Bearer global-must-not-win"}`)
+
+	upstreamHeaders := doApiRequestWithCapturedUpstream(t, map[string]string{
+		"Content-Type": "application/json",
+	}, &relaycommon.RelayInfo{IsChannelTest: true})
+
+	require.Equal(t, "f6", upstreamHeaders.Get("X-System-Flag"))
+	// 全局 UA 必须生效，Go transport 的 Go-http-client 兜底不得出现
+	require.Equal(t, "new-api-system/1.0", upstreamHeaders.Get("User-Agent"))
+	// 全局配置不得覆盖路径默认认证头
+	require.Equal(t, "Bearer channel-key", upstreamHeaders.Get("Authorization"))
+}
+
+// F6: 用户 relay 请求（IsChannelTest=false）不得携带全局系统请求头
+func TestDoApiRequest_SystemRequestHeadersSkippedForUserRelay(t *testing.T) {
+	setSystemRequestHeadersForTest(t, `{"X-System-Flag":"f6","User-Agent":"new-api-system/1.0"}`)
+
+	upstreamHeaders := doApiRequestWithCapturedUpstream(t, map[string]string{
+		"Content-Type": "application/json",
+	}, &relaycommon.RelayInfo{IsChannelTest: false})
+
+	require.Empty(t, upstreamHeaders.Get("X-System-Flag"))
+	require.NotEqual(t, "new-api-system/1.0", upstreamHeaders.Get("User-Agent"))
+}
+
+// F6: 渠道级 HeaderOverride 优先于全局设置
+func TestDoApiRequest_ChannelOverrideBeatsSystemRequestHeaders(t *testing.T) {
+	setSystemRequestHeadersForTest(t, `{"X-System-Flag":"global","X-Other":"global-other"}`)
+
+	upstreamHeaders := doApiRequestWithCapturedUpstream(t, map[string]string{
+		"Content-Type": "application/json",
+	}, &relaycommon.RelayInfo{
+		IsChannelTest: true,
+		ChannelMeta: &relaycommon.ChannelMeta{
+			HeadersOverride: map[string]any{
+				"X-System-Flag": "channel",
+			},
+		},
+	})
+
+	require.Equal(t, "channel", upstreamHeaders.Get("X-System-Flag"))
+	require.Equal(t, "global-other", upstreamHeaders.Get("X-Other"))
 }

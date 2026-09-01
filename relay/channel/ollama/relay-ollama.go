@@ -13,6 +13,7 @@ import (
 	"github.com/QuantumNous/new-api/dto"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/types"
 
 	"github.com/gin-gonic/gin"
@@ -291,6 +292,7 @@ func FetchOllamaModels(baseURL, apiKey string) ([]OllamaModel, error) {
 	if apiKey != "" {
 		request.Header.Set("Authorization", "Bearer "+apiKey)
 	}
+	setting.ApplySystemRequestHeaders(request.Header)
 
 	response, err := client.Do(request)
 	if err != nil {
@@ -343,6 +345,7 @@ func PullOllamaModel(baseURL, apiKey, modelName string) error {
 	if apiKey != "" {
 		request.Header.Set("Authorization", "Bearer "+apiKey)
 	}
+	setting.ApplySystemRequestHeaders(request.Header)
 
 	response, err := client.Do(request)
 	if err != nil {
@@ -384,6 +387,7 @@ func PullOllamaModelStream(baseURL, apiKey, modelName string, progressCallback f
 	if apiKey != "" {
 		request.Header.Set("Authorization", "Bearer "+apiKey)
 	}
+	setting.ApplySystemRequestHeaders(request.Header)
 
 	response, err := client.Do(request)
 	if err != nil {
@@ -458,6 +462,7 @@ func DeleteOllamaModel(baseURL, apiKey, modelName string) error {
 	if apiKey != "" {
 		request.Header.Set("Authorization", "Bearer "+apiKey)
 	}
+	setting.ApplySystemRequestHeaders(request.Header)
 
 	response, err := client.Do(request)
 	if err != nil {

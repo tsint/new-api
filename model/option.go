@@ -144,6 +144,7 @@ func InitOptionMap() {
 	common.OptionMap["NonStreamRequestRateLimitEnabled"] = strconv.FormatBool(setting.NonStreamRequestRateLimitEnabled)
 	common.OptionMap["NonStreamRequestRateLimitCount"] = strconv.Itoa(setting.NonStreamRequestRateLimitCount)
 	common.OptionMap["NonStreamRequestRateLimitGroup"] = setting.NonStreamRateLimitGroup2JSONString()
+	common.OptionMap["SystemRequestHeaders"] = setting.SystemRequestHeaders2JSONString()
 	common.OptionMap["UserGroupRateLimitSettings"] = "{}"
 	common.OptionMap["ModelRatio"] = ratio_setting.ModelRatio2JSONString()
 	common.OptionMap["ModelPrice"] = ratio_setting.ModelPrice2JSONString()
@@ -505,6 +506,8 @@ func updateOptionMap(key string, value string) (err error) {
 		setting.NonStreamRequestRateLimitCount, _ = strconv.Atoi(value)
 	case "NonStreamRequestRateLimitGroup":
 		err = setting.UpdateNonStreamRateLimitGroupByJSONString(value)
+	case "SystemRequestHeaders":
+		err = setting.UpdateSystemRequestHeadersByJSONString(value)
 	case "UserGroupRateLimitSettings":
 		err = setting.UpdateUserGroupRateLimitSettingsByJSONString(value)
 	case "RetryTimes":

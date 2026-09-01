@@ -21,6 +21,7 @@ import (
 
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/gin-gonic/gin"
@@ -203,6 +204,7 @@ func FetchUpstreamRatios(c *gin.Context) {
 					return
 				}
 				httpReq.Header.Set("Authorization", "Bearer "+strings.TrimSpace(key))
+				setting.ApplySystemRequestHeaders(httpReq.Header)
 			} else if isOpenRouter {
 				ch <- upstreamResult{Name: uniqueName, Err: "OpenRouter requires a valid channel with API key"}
 				return

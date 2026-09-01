@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/QuantumNous/new-api/setting"
 )
 
 func FetchCodexWhamUsage(
@@ -41,6 +43,7 @@ func FetchCodexWhamUsage(
 	if req.Header.Get("originator") == "" {
 		req.Header.Set("originator", "codex_cli_rs")
 	}
+	setting.ApplySystemRequestHeaders(req.Header)
 
 	resp, err := client.Do(req)
 	if err != nil {

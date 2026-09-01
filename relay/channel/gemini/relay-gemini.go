@@ -20,6 +20,7 @@ import (
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relay/helper"
 	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/model_setting"
 	"github.com/QuantumNous/new-api/setting/reasoning"
 	"github.com/QuantumNous/new-api/types"
@@ -1611,6 +1612,7 @@ func FetchGeminiModels(baseURL, apiKey, proxyURL string) ([]string, error) {
 		}
 
 		request.Header.Set("x-goog-api-key", apiKey)
+		setting.ApplySystemRequestHeaders(request.Header)
 
 		response, err := client.Do(request)
 		if err != nil {

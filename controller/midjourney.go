@@ -94,6 +94,7 @@ func UpdateMidjourneyTaskBulk() {
 			req = req.WithContext(ctx)
 			req.Header.Set("Content-Type", "application/json")
 			req.Header.Set("mj-api-secret", midjourneyChannel.Key)
+			setting.ApplySystemRequestHeaders(req.Header)
 			resp, err := service.GetHttpClient().Do(req)
 			if err != nil {
 				logger.LogError(ctx, fmt.Sprintf("Get Task Do req error: %v", err))
